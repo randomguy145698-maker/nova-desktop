@@ -50,9 +50,9 @@
 
   "plugins": {
     "updater": {
-      "pubkey": "PASTE_YOUR_GENERATED_PUBLIC_KEY_HERE",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkxREU5N0VGMTkwNkVDNjAKUldSZzdBWVo3NWZla1lNOVdPSEltVVdUUmNGMDBvYmN3cDlMTlRDR2xGVFl2NEF1TzRLRHhqdTkK",
       "endpoints": [
-        "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest/download/latest.json"
+        "https://github.com/randomguy145698-maker/nova-desktop/releases/latest/download/latest.json"
       ]
     }
   }
