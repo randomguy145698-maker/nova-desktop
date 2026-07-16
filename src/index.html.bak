@@ -126,7 +126,6 @@
   <button data-tab="memories">🕸️ Memory</button>
   <button data-tab="net">🧠 Net</button>
   <button data-tab="train">🎯 Train</button>
-  <button data-tab="conversations">📜 Log</button>
   <button data-tab="topics">📂 Topics</button>
   <button data-tab="persona">🎭 Style</button>
 </nav>
@@ -234,15 +233,7 @@
   <!-- NEURAL NET -->
   <section id="tab-net" class="tab">
     <div class="panel-pad" style="flex:1; min-height:0;">
-      <h2>💤 Auto-improve while you're away</h2>
-      <p class="note">When this is on, Nova quietly retrains whichever native models you've already trained once — but only after you've been away from the app for a few minutes, and never while you're actively using it. Come back later and it'll just be a little sharper.</p>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-        <input type="checkbox" id="idle-autoimprove-toggle" style="width:18px; height:18px;">
-        <span>Auto-improve while idle (desktop app only)</span>
-      </label>
-      <p class="note" id="idle-autoimprove-status">Off.</p>
-
-      <h2 style="margin-top:14px">🧠 Nova's neural network — live</h2>
+      <h2>🧠 Nova's neural network — live</h2>
       <p class="note" id="net-info">Waiting for the network to train…</p>
       <div class="row">
         <select id="net-size">
@@ -357,16 +348,6 @@
         <button class="btn" id="tr-study">Study into this agent</button>
         <div class="note" id="tr-status"></div>
       </div>
-    </div>
-  </section>
-
-  <!-- CONVERSATIONS -->
-  <section id="tab-conversations" class="tab">
-    <div class="panel-pad" style="flex:1; min-height:0;">
-      <h2>📜 Saved conversations</h2>
-      <p class="note">Every conversation you've had with Nova is saved here permanently — not just a quick recap, the full transcript, session by session. Search across all of them, or open one to read it in full.</p>
-      <input id="conv-search" type="text" placeholder="🔎 Search everything you've ever said to Nova…">
-      <div id="conv-list" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;"></div>
     </div>
   </section>
 
@@ -1165,14 +1146,6 @@ function memPhysicsStep(){
   return energy;
 }
 
-let memGraphSignature=""; // detects whether the brain actually changed since last build
-let memLastStatusRefresh=0; // throttles the "still organizing" status text updates
-function memBrainSignature(){
-  const topics=Object.keys(brain);
-  let total=0; for(const t of topics) total+=Object.keys(brain[t]).length;
-  return topics.map(t=>t+":"+Object.keys(brain[t]).length).sort().join("|")+"#"+total;
-}
-
 function buildMemoryGraph(){
   memNodes=[]; memEdges=[]; memSel=null; memMatches=new Set();
   const topics=Object.keys(brain);
@@ -1211,11 +1184,9 @@ function buildMemoryGraph(){
     }
   }
   const wordIndex=Object.create(null);
-  const topicSizeCache=Object.create(null); // avoid recomputing this per-fact (was an accidental O(n²))
-  for(const t of topics) topicSizeCache[t]=Object.keys(brain[t]).length;
   factList.forEach((f,i)=>{
     const hub=topicNode[f.t];
-    const topicSize=topicSizeCache[f.t];
+    const topicSize=Object.keys(brain[f.t]).length;
     const orbit=95*Math.sqrt(topicSize); // bigger topics claim proportionally more space
     const ang=Math.random()*6.283, rad=Math.sqrt(Math.random())*orbit;
     const n={id:"F:"+String(i).padStart(6,"0"), type:"fact", label:f.q, topic:f.t,
@@ -1284,10 +1255,7 @@ function memoryFrame(){
     const steps=memFast ? Math.max(1, Math.min(14, Math.round(4000/Math.max(1,memNodes.length)))) : 1;
     let energy=0;
     for(let s=0;s<steps;s++) energy=memPhysicsStep();
-    if(energy<0.02*memNodes.length && !memDrag){ memSleep=true; memFast=false; memNeedsDraw=true; memShowDetail(); }
-    else if(memFast && !memSel && Date.now()-(memLastStatusRefresh||0)>800){
-      memLastStatusRefresh=Date.now(); memShowDetail(); // keep the "still organizing" line honest and live
-    }
+    if(energy<0.02*memNodes.length && !memDrag){ memSleep=true; memFast=false; memNeedsDraw=true; }
   }
 
   const searching=memSearch.length>0;
@@ -1367,10 +1335,7 @@ function memNodeAt(px,py){
 function memShowDetail(){
   const det=$("memdetail"), btn=$("memforget");
   if(!memSel){
-    const total=memNodes.filter(n=>n.type==="fact").length;
-    det.firstChild.textContent = memFast
-      ? `🌌 Organizing ${total.toLocaleString()} memories… this can take a little while for a big brain, but only happens once — reopening this tab won't restart it.`
-      : `🕸️ ${total.toLocaleString()} memories mapped. Tap a dot to read it; pinch/scroll to zoom.`;
+    det.firstChild.textContent=`🕸️ ${memNodes.filter(n=>n.type==="fact").length} memories mapped. Tap a dot to read it; pinch/scroll to zoom.`;
     btn.style.display="none";
     return;
   }
@@ -1410,33 +1375,8 @@ let memFast=false, memNeedsDraw=true, memError=null;
 function renderMemories(){
   try{
     memError=null;
-    const sig=memBrainSignature();
-    if(sig!==memGraphSignature){
-      // the brain genuinely changed since last time — rebuild, which
-      // means re-randomizing spawn positions and re-settling. Do a
-      // time-budgeted burst of physics steps RIGHT NOW (accepting a
-      // brief pause) rather than trickling it out one step per animation
-      // frame — at huge scale that could otherwise take minutes to look
-      // right. Bounded by wall-clock time, not step count, so it scales
-      // itself to whatever this device can actually do.
-      buildMemoryGraph();
-      memGraphSignature=sig;
-      // Bigger graphs get proportionally more upfront settle time — this
-      // only costs anything the FIRST time (or when facts actually
-      // change), since unchanged reopens skip rebuilding entirely.
-      const budgetMs=Math.min(5000, 1000+Math.round(memNodes.length/4));
-      const start=Date.now();
-      let energy=Infinity; // guaranteed above any possible threshold, so the loop always runs a real step first
-      while(Date.now()-start<budgetMs && energy>0.02*memNodes.length){
-        energy=memPhysicsStep();
-      }
-      memSleep = energy<=0.02*memNodes.length;
-      memFast = !memSleep;
-    }
-    // if nothing changed, memNodes/memEdges/cam are all left exactly as
-    // they were the last time this tab was open — no wasted re-shuffle,
-    // no re-settling a huge graph from scratch on every single visit
-    memNeedsDraw=true;
+    buildMemoryGraph();
+    memSleep=false; memFast=true; memNeedsDraw=true;   // settle on-screen, never freeze the tab
     $("memsearch").value=""; memSearch="";
     memShowDetail();
   }catch(err){
@@ -2350,7 +2290,6 @@ function openNetTab(){
     renderNet();
   }, 600);
   showNativeNetIfDesktop();
-  updateIdleStatusLine();
 }
 
 /* ---------- 🚀 NATIVE NETWORK (desktop app only) ----------
@@ -2380,67 +2319,65 @@ function allFactsForNativeTraining(){
       out.push({topic, question:q, answer:brain[topic][q]});
   return out;
 }
-let nativeNetTrained=false;
-async function runNativeNetTraining(sizeMode, statusEl){
-  if(!isDesktopApp()){ if(statusEl) statusEl.textContent="Native training is only available in the desktop app."; return null; }
-  const facts=allFactsForNativeTraining();
-  if(statusEl) statusEl.textContent = sizeMode==="ultra"
-    ? "🚀 Training the Ultra network natively — this can take a few minutes, the app will stay responsive…"
-    : "🚀 Training natively…";
-  try{
-    const result=await tauriInvoke("train_native_network",{facts, sizeMode});
-    if(!result){ if(statusEl) statusEl.textContent="Couldn't reach the native trainer — is this the desktop app?"; return null; }
-    if(!result.trained){ if(statusEl) statusEl.textContent=result.message; return result; }
-    nativeNetTrained=true;
-    if(statusEl) statusEl.textContent="✅ "+result.message;
-    if(result.params>=1000000) achieve("native_megamind","🏆 Native Megamind — trained a real multi-million parameter network in Rust!");
-    return result;
-  }catch(err){
-    if(statusEl) statusEl.textContent="Training failed: "+(err&&err.message?err.message:err);
-    return null;
-  }
-}
 (function wireNativeNetButton(){
   const btn=document.getElementById("native-net-train");
   if(!btn) return;
   btn.addEventListener("click", async ()=>{
+    if(!isDesktopApp()){
+      document.getElementById("native-net-status").textContent="Native training is only available in the desktop app.";
+      return;
+    }
     const sizeMode=document.getElementById("native-net-size").value;
     const status=document.getElementById("native-net-status");
+    const facts=allFactsForNativeTraining();
     btn.disabled=true; btn.textContent="Training…";
-    await runNativeNetTraining(sizeMode, status);
+    status.textContent = sizeMode==="ultra"
+      ? "🚀 Training the Ultra network natively — this can take a few minutes, the app will stay responsive…"
+      : "🚀 Training natively…";
+    try{
+      const result=await tauriInvoke("train_native_network",{facts, sizeMode});
+      if(!result){ status.textContent="Couldn't reach the native trainer — is this the desktop app?"; }
+      else if(!result.trained){ status.textContent=result.message; }
+      else{
+        status.textContent="✅ "+result.message;
+        if(result.params>=1000000) achieve("native_megamind","🏆 Native Megamind — trained a real multi-million parameter network in Rust!");
+      }
+    }catch(err){
+      status.textContent="Training failed: "+(err&&err.message?err.message:err);
+    }
     btn.disabled=false; btn.textContent="Train native network";
   });
 })();
 
 /* 🧠 Native GENERATOR wiring — trains and runs the next-word predictor */
 let nativeGenTrained=false;
-async function runNativeGenTraining(sizeMode, statusEl){
-  if(!isDesktopApp()){ if(statusEl) statusEl.textContent="Native training is only available in the desktop app."; return null; }
-  const facts=allFactsForNativeTraining();
-  if(statusEl) statusEl.textContent="🧠 Training the native generator — reading everything Nova knows…";
-  try{
-    const result=await tauriInvoke("train_native_generator",{facts, sizeMode});
-    if(!result){ if(statusEl) statusEl.textContent="Couldn't reach the native trainer — is this the desktop app?"; return null; }
-    if(!result.trained){ if(statusEl) statusEl.textContent=result.message; return result; }
-    nativeGenTrained=true;
-    if(statusEl) statusEl.textContent="✅ "+result.message+"\n\n✨ Sample: "+result.sample;
-    achieve("native_writer","🏆 Native Writer — trained a real neural text generator!");
-    return result;
-  }catch(err){
-    if(statusEl) statusEl.textContent="Training failed: "+(err&&err.message?err.message:err);
-    return null;
-  }
-}
 (function wireNativeGenButtons(){
   const trainBtn=document.getElementById("native-gen-train");
   const runBtn=document.getElementById("native-gen-run");
   if(!trainBtn||!runBtn) return;
 
   trainBtn.addEventListener("click", async ()=>{
+    if(!isDesktopApp()){
+      document.getElementById("native-gen-status").textContent="Native training is only available in the desktop app.";
+      return;
+    }
     const sizeMode=document.getElementById("native-gen-size").value;
     const status=document.getElementById("native-gen-status");
+    const facts=allFactsForNativeTraining();
     trainBtn.disabled=true; trainBtn.textContent="Training…";
-    await runNativeGenTraining(sizeMode, status);
+    status.textContent="🧠 Training the native generator — reading everything Nova knows…";
+    try{
+      const result=await tauriInvoke("train_native_generator",{facts, sizeMode});
+      if(!result){ status.textContent="Couldn't reach the native trainer — is this the desktop app?"; }
+      else if(!result.trained){ status.textContent=result.message; }
+      else{
+        nativeGenTrained=true;
+        status.textContent="✅ "+result.message+"\n\n✨ Sample: "+result.sample;
+        achieve("native_writer","🏆 Native Writer — trained a real neural text generator!");
+      }
+    }catch(err){
+      status.textContent="Training failed: "+(err&&err.message?err.message:err);
+    }
     trainBtn.disabled=false; trainBtn.textContent="Train native generator";
   });
 
@@ -2462,33 +2399,33 @@ async function runNativeGenTraining(sizeMode, statusEl){
 
 /* 🧬 Native EMBEDDINGS wiring — trains + queries real semantic vectors */
 let nativeEmbedTrained=false;
-async function runNativeEmbedTraining(sizeMode, statusEl){
-  if(!isDesktopApp()){ if(statusEl) statusEl.textContent="Native training is only available in the desktop app."; return null; }
-  const facts=allFactsForNativeTraining();
-  if(statusEl) statusEl.textContent="🧬 Training embeddings — learning which words mean similar things…";
-  try{
-    const result=await tauriInvoke("train_native_embeddings",{facts, sizeMode});
-    if(!result){ if(statusEl) statusEl.textContent="Couldn't reach the native trainer — is this the desktop app?"; return null; }
-    if(!result.trained){ if(statusEl) statusEl.textContent=result.message; return result; }
-    nativeEmbedTrained=true;
-    if(statusEl) statusEl.textContent="✅ "+result.message;
-    achieve("native_semantic","🏆 Native Semantic — trained real word embeddings, Nova now understands meaning!");
-    return result;
-  }catch(err){
-    if(statusEl) statusEl.textContent="Training failed: "+(err&&err.message?err.message:err);
-    return null;
-  }
-}
 (function wireNativeEmbedButtons(){
   const trainBtn=document.getElementById("native-embed-train");
   const nearestBtn=document.getElementById("native-embed-nearest");
   if(!trainBtn||!nearestBtn) return;
 
   trainBtn.addEventListener("click", async ()=>{
+    if(!isDesktopApp()){
+      document.getElementById("native-embed-status").textContent="Native training is only available in the desktop app.";
+      return;
+    }
     const sizeMode=document.getElementById("native-embed-size").value;
     const status=document.getElementById("native-embed-status");
+    const facts=allFactsForNativeTraining();
     trainBtn.disabled=true; trainBtn.textContent="Training…";
-    await runNativeEmbedTraining(sizeMode, status);
+    status.textContent="🧬 Training embeddings — learning which words mean similar things…";
+    try{
+      const result=await tauriInvoke("train_native_embeddings",{facts, sizeMode});
+      if(!result){ status.textContent="Couldn't reach the native trainer — is this the desktop app?"; }
+      else if(!result.trained){ status.textContent=result.message; }
+      else{
+        nativeEmbedTrained=true;
+        status.textContent="✅ "+result.message;
+        achieve("native_semantic","🏆 Native Semantic — trained real word embeddings, Nova now understands meaning!");
+      }
+    }catch(err){
+      status.textContent="Training failed: "+(err&&err.message?err.message:err);
+    }
     trainBtn.disabled=false; trainBtn.textContent="Train native embeddings";
   });
 
@@ -2511,76 +2448,6 @@ async function runNativeEmbedTraining(sizeMode, statusEl){
   });
 })();
 
-/* ---------- 💤 IDLE AUTO-IMPROVE ----------
-   While the desktop app sits open and untouched, Nova can spend that
-   time retraining whichever native models you've already opted into —
-   automatically, in the background, with no click required. This is
-   purely additive on top of the manual "Train native X" buttons above;
-   it only ever RE-trains a model you've already trained once (it never
-   starts a brand-new model unprompted), and it only runs once you've
-   genuinely stepped away, never while you're actively using Nova. */
-let lastActivityAt=Date.now();
-["mousemove","keydown","click","touchstart"].forEach(ev=>{
-  document.addEventListener(ev, ()=>{ lastActivityAt=Date.now(); }, {passive:true});
-});
-
-const IDLE_THRESHOLD_MS=5*60*1000;   // 5 minutes of no activity counts as "away"
-const IDLE_CHECK_EVERY_MS=2*60*1000; // check every 2 minutes whether it's time
-let idleTrainingInProgress=false;
-memory.idleLog=memory.idleLog||[];
-
-function updateIdleStatusLine(){
-  const el=document.getElementById("idle-autoimprove-status");
-  if(!el) return;
-  if(!memory.autoImproveIdle){ el.textContent="Off."; return; }
-  if(!isDesktopApp()){ el.textContent="On, but this only works in the desktop app."; return; }
-  const last=memory.idleLog[memory.idleLog.length-1];
-  el.textContent = last
-    ? `On. Last auto-improve: ${new Date(last.when).toLocaleString()} — ${last.summary}`
-    : "On. Nothing retrained yet — step away for a few minutes and it'll get to work.";
-}
-
-async function idleAutoImproveTick(){
-  if(!memory.autoImproveIdle || !isDesktopApp() || idleTrainingInProgress) return;
-  if(studying) return; // don't collide with a Deep Study in progress
-  const idleFor=Date.now()-lastActivityAt;
-  if(idleFor<IDLE_THRESHOLD_MS) return;
-
-  // Rotate through whichever native models have ALREADY been trained at
-  // least once — never auto-starts one you haven't opted into yet.
-  const candidates=[];
-  if(nativeNetTrained) candidates.push({name:"topic classifier", run:()=>runNativeNetTraining("standard",null)});
-  if(nativeGenTrained) candidates.push({name:"text generator", run:()=>runNativeGenTraining("standard",null)});
-  if(nativeEmbedTrained) candidates.push({name:"word embeddings", run:()=>runNativeEmbedTraining("standard",null)});
-  if(!candidates.length) return;
-
-  const pick=candidates[Math.floor(Math.random()*candidates.length)];
-  idleTrainingInProgress=true;
-  try{
-    const result=await pick.run();
-    const summary=result && result.trained ? `retrained the ${pick.name} (${result.message||"done"})` : `tried to retrain the ${pick.name} but there wasn't enough new material`;
-    memory.idleLog.push({when:new Date().toISOString(), summary});
-    memory.idleLog=memory.idleLog.slice(-20);
-    saveAll();
-    updateIdleStatusLine();
-  }catch(e){/* stay quiet — this is a background bonus, not a core feature */}
-  idleTrainingInProgress=false;
-}
-setInterval(idleAutoImproveTick, IDLE_CHECK_EVERY_MS);
-
-(function wireIdleToggle(){
-  const toggle=document.getElementById("idle-autoimprove-toggle");
-  if(!toggle) return;
-  toggle.checked=!!memory.autoImproveIdle;
-  updateIdleStatusLine();
-  toggle.addEventListener("change",()=>{
-    memory.autoImproveIdle=toggle.checked; saveAll(); updateIdleStatusLine();
-    if(memory.autoImproveIdle && memory.idleLog.length){
-      bubble("sys","💤 Auto-improve is on — I'll quietly retrain myself after you've been away a few minutes.");
-    }
-  });
-})();
-
 /* 🧬 Semantic fallback for chat: if literal keyword matching finds
    nothing AND embeddings are trained, try matching by MEANING instead.
    Same safe pattern as the other native hooks — async, additive,
@@ -2600,91 +2467,9 @@ async function trySemanticFallback(text){
   }catch(err){/* stay silent — this is a bonus, not a requirement */}
 }
 
-/* 🗣️ De-scripting Nova's most frequent lines: casual banter, "I don't
-   know" replies, and teach-confirmations used to always be picked from
-   a small fixed list per personality — which is exactly why the app can
-   feel like it's "reading set prompts" even with real neural nets
-   running underneath. When a native generator is trained (desktop app),
-   THIS becomes the actual reply for those moments — not a bolted-on
-   follow-up — so the words you see are genuinely generated, live, from
-   what Nova has read. Falls back to the personality's canned lines
-   whenever native generation isn't available, so nothing ever breaks. */
-async function liveOrCanned(seed, cannedArray){
-  if(isDesktopApp() && nativeGenTrained){
-    try{
-      const words=keywords(seed||"");
-      const pickSeed=words.length ? words[Math.floor(Math.random()*words.length)] : null;
-      const out=await tauriInvoke("generate_native_text",{seed:pickSeed, maxWords:16});
-      if(out && out.text && out.text.length>3) return out.text;
-    }catch(e){/* fall through to the canned line below */}
-  }
-  return pick(cannedArray);
-}
-
 /* ---------- persistence ---------- */
 function saveAll(){ store.set("nova_brain",brain); store.set("nova_memory",memory); refreshChips(); }
-function logLine(who,text){
-  const when=new Date().toISOString().slice(0,16).replace("T"," ");
-  memory.history.push({when,who,text}); memory.history=memory.history.slice(-30);
-  // 📜 Full, permanent conversation archive — separate from the small
-  // rolling `history` above (which only exists for the lightweight
-  // "welcome back" blurb). This keeps every session's FULL transcript,
-  // capped by NUMBER of sessions kept (not by how long any one
-  // conversation runs), so real conversations are genuinely saved as
-  // memories you can browse and search later, not just glimpsed.
-  memory.conversations=memory.conversations||[];
-  if(!memory.conversations.length) memory.conversations.push({date:new Date().toISOString(),lines:[]});
-  const current=memory.conversations[memory.conversations.length-1];
-  current.lines.push({when,who,text});
-  if(current.lines.length>2000) current.lines=current.lines.slice(-2000); // sanity cap on one runaway session
-  if(memory.conversations.length>50) memory.conversations=memory.conversations.slice(-50); // keep the last 50 sessions
-}
-
-/* ---------- 📜 conversation archive browser ---------- */
-function renderConversationsList(){
-  const list=$("conv-list"); if(!list) return;
-  list.innerHTML="";
-  const convos=memory.conversations||[];
-  const query=($("conv-search").value||"").trim().toLowerCase();
-  const entries=convos.map((c,i)=>({c,i})).filter(({c})=>!query || c.lines.some(l=>l.text.toLowerCase().includes(query)));
-  if(!entries.length){
-    const p=document.createElement("p"); p.className="note";
-    p.textContent = query ? `No saved conversations mention "${query}".` : "No conversations saved yet — come back after chatting a bit!";
-    list.appendChild(p);
-    return;
-  }
-  for(let idx=entries.length-1; idx>=0; idx--){
-    const {c,i}=entries[idx];
-    const row=document.createElement("div");
-    row.className="topic-item";
-    row.innerHTML=`<span class="t-name"></span><span class="t-count mono"></span>`;
-    row.querySelector(".t-name").textContent=`Session #${i+1} — ${new Date(c.date).toLocaleString()}`;
-    row.querySelector(".t-count").textContent=c.lines.length+" lines";
-    row.addEventListener("click",()=>renderConversationTranscript(i, query));
-    list.appendChild(row);
-  }
-}
-function renderConversationTranscript(i, highlightQuery){
-  const list=$("conv-list"); if(!list) return;
-  list.innerHTML="";
-  const convo=(memory.conversations||[])[i];
-  if(!convo) return;
-  const back=document.createElement("button");
-  back.className="btn ghost"; back.textContent="← Back to all sessions";
-  back.addEventListener("click",()=>renderConversationsList());
-  list.appendChild(back);
-  const wrap=document.createElement("div");
-  wrap.style.cssText="display:flex; flex-direction:column; gap:6px; margin-top:8px;";
-  for(const line of convo.lines){
-    const b=document.createElement("div");
-    b.className="bubble "+(line.who==="Bot"?"bot":"user");
-    b.style.maxWidth="100%";
-    b.textContent=`[${line.when}] ${line.who}: ${line.text}`;
-    if(highlightQuery && line.text.toLowerCase().includes(highlightQuery)) b.style.outline="2px solid var(--accent)";
-    wrap.appendChild(b);
-  }
-  list.appendChild(wrap);
-}
+function logLine(who,text){ memory.history.push({when:new Date().toISOString().slice(0,16).replace("T"," "),who,text}); memory.history=memory.history.slice(-30); }
 
 /* ---------- UI: general ---------- */
 const $ = id => document.getElementById(id);
@@ -2827,7 +2612,6 @@ document.querySelectorAll("nav button").forEach(b=>{
     if(b.dataset.tab==="quiz") renderQuizStats();
     if(b.dataset.tab==="net") openNetTab();
     if(b.dataset.tab==="train") renderTrainAgents();
-    if(b.dataset.tab==="conversations") renderConversationsList();
     if(b.dataset.tab==="memories") renderMemories();
   });
 });
@@ -2870,7 +2654,7 @@ function setTeachbar(){
   else bar.style.display="none";
 }
 
-async function handleUser(text){
+function handleUser(text){
   bubble("user",text); logLine(memory.name||"You",text);
 
   if(awaitingName){
@@ -2897,7 +2681,7 @@ async function handleUser(text){
     setMood("happy");
     achieve("first_fact","🥇 First fact — Nova's education has begun!");
     if(memory.factsTaught>=100) achieve("facts100","💯 100 facts taught!");
-    botSay((await liveOrCanned(topic, P().gotit))+` (saved under '${topic}')`,asExpert(expertForTopic(topic)));
+    botSay(pick(P().gotit)+` (saved under '${topic}')`,asExpert(expertForTopic(topic)));
     return;
     }
   }
@@ -3113,7 +2897,7 @@ async function handleUser(text){
   const isQuestion=/^(what|who|how|why|when|where|which|is|are|do|does|can|will|did)\b/.test(cl) || text.trim().endsWith("?");
   if(!isQuestion){
     bumpStat(getExpert("chat"),"answered");
-    botSay(await liveOrCanned(text, P().chat||P().greet),asExpert(getExpert("chat")));
+    botSay(pick(P().chat||P().greet),asExpert(getExpert("chat")));
     return;
   }
 
@@ -3127,7 +2911,7 @@ async function handleUser(text){
     return;
   }
 
-  botSay((await liveOrCanned(text, P().unknown))+'\n(Or say "look it up" and I\'ll search the internet! 🌐)',{log:true, ...asExpert(expert)});
+  botSay(pick(P().unknown)+'\n(Or say "look it up" and I\'ll search the internet! 🌐)',{log:true, ...asExpert(expert)});
 }
 $("imaginebtn").addEventListener("click",()=>{ const v=$("msg").value.trim(); $("msg").value=""; handleUser(v ? "imagine "+v : "imagine"); });
 $("send").addEventListener("click",()=>{ const v=$("msg").value.trim(); if(v){$("msg").value=""; handleUser(v);} });
@@ -3158,7 +2942,6 @@ if(SR){
 }
 
 $("net-probe").addEventListener("input",renderNet);
-$("conv-search").addEventListener("input", ()=>renderConversationsList());
 $("t-topic").addEventListener("change",updateTeachDestination);
 $("t-newtopic").addEventListener("input",updateTeachDestination);
 $("net-size").value=memory.netSize||"auto";
@@ -3392,10 +3175,6 @@ $("p-reset").addEventListener("click",()=>{
 
 /* ---------- startup ---------- */
 memory.sessions++; saveAll(); applyTheme(); renderTeach(); setTeachbar(); renderVoiceBtn();
-memory.conversations=memory.conversations||[];
-memory.conversations.push({date:new Date().toISOString(),lines:[]});
-if(memory.conversations.length>50) memory.conversations=memory.conversations.slice(-50);
-saveAll();
 setInterval(curiosityTick, 90000); // 🐣 Nova gets curious now and then
 setTimeout(nnScheduleRetrain, 1500); // 🧠 wake the neural network
 bubble("sys","🗣️ New: tap 🔊 to hear Nova speak, 🎤 to talk to it — and when Nova isn't sure, it now thinks out loud 💭 in its own voice, built from what it reads.");
