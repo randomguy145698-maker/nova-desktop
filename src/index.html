@@ -1,0 +1,2780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova — Your Learning AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1420; --panel:#18202E; --panel2:#202B3C; --line:#2A3648;
+    --text:#E8EEF5; --muted:#8A97A8;
+    --accent:#4FD8EB; --glow:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+  }
+  .mono{font-family:ui-monospace,'SF Mono',Menlo,monospace;}
+
+  header{display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line);}
+  #orb{
+    width:48px; height:48px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:26px;
+    background:radial-gradient(circle at 35% 30%, var(--panel2), var(--bg));
+    box-shadow:0 0 var(--glow) 2px color-mix(in srgb, var(--accent) 55%, transparent),
+               inset 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent);
+    transition:box-shadow .4s;
+  }
+  #orb.thinking{animation:pulse 1s infinite;}
+  @keyframes pulse{50%{box-shadow:0 0 calc(var(--glow) * 2) 6px color-mix(in srgb, var(--accent) 80%, transparent);}}
+  @media (prefers-reduced-motion: reduce){ #orb.thinking{animation:none;} }
+  .head-info{flex:1; min-width:0;}
+  .head-info h1{font-size:17px; font-weight:700; letter-spacing:.3px;}
+  .chips{display:flex; gap:6px; margin-top:3px; flex-wrap:wrap;}
+  .chip{font-size:11px; color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:99px; padding:2px 8px;}
+  .chip b{color:var(--accent); font-weight:500;}
+  #voicebtn{background:var(--panel); border:1px solid var(--line); border-radius:50%; width:38px; height:38px; font-size:17px; cursor:pointer; flex:none;}
+  #voicebtn.on{border-color:var(--accent); box-shadow:0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);}
+  #voicebtn:focus-visible{outline:2px solid var(--accent);}
+
+  nav{display:flex; border-bottom:1px solid var(--line);}
+  nav button{flex:1; padding:10px 1px; background:none; border:none; cursor:pointer; color:var(--muted); font:inherit; font-size:11px; border-bottom:2px solid transparent;}
+  nav button.active{color:var(--accent); border-bottom-color:var(--accent);}
+  nav button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+
+  main{flex:1; overflow:hidden; display:flex; flex-direction:column;}
+  .tab{display:none; flex:1; overflow-y:auto; flex-direction:column;}
+  .tab.active{display:flex;}
+
+  #chatlog{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;}
+  .bubble{max-width:82%; padding:9px 13px; border-radius:16px; line-height:1.45; font-size:15px; white-space:pre-wrap;}
+  .exptag{font-size:10px; color:var(--muted); letter-spacing:.5px; margin-bottom:4px; text-transform:uppercase;}
+  .bot{align-self:flex-start; background:var(--panel2); border-bottom-left-radius:4px;}
+  .user{align-self:flex-end; background:color-mix(in srgb, var(--accent) 22%, var(--panel)); border-bottom-right-radius:4px;}
+  .sys{align-self:center; color:var(--muted); font-size:12px; text-align:center;}
+  #teachbar{display:none; padding:6px 16px; font-size:12px; color:var(--bg); background:var(--accent); font-weight:500;}
+  #inputbar{display:flex; gap:6px; padding:10px 12px; border-top:1px solid var(--line);}
+  #msg{flex:1; min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:11px 16px; color:var(--text); font:inherit; font-size:15px;}
+  #msg:focus{outline:2px solid var(--accent); border-color:transparent;}
+  .roundbtn{background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:22px; padding:0 13px; font:inherit; cursor:pointer; font-size:16px;}
+  .roundbtn.listening{border-color:#FF5A5A; box-shadow:0 0 10px #FF5A5A66;}
+  #send{background:var(--accent); color:var(--bg); border:none; border-radius:22px; padding:0 18px; font:inherit; font-weight:700; cursor:pointer;}
+
+  .panel-pad{padding:16px; display:flex; flex-direction:column; gap:14px;}
+  h2{font-size:14px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); font-weight:500;}
+  label{font-size:13px; color:var(--muted); display:block; margin-bottom:4px;}
+  input[type=text], select, textarea{width:100%; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--text); font:inherit; font-size:14px;}
+  textarea{resize:vertical; min-height:70px;}
+  input:focus-visible, select:focus-visible, textarea:focus-visible{outline:2px solid var(--accent);}
+  .btn{background:var(--accent); color:var(--bg); border:none; border-radius:10px; padding:10px 16px; font:inherit; font-weight:700; cursor:pointer; font-size:14px;}
+  .btn.ghost{background:var(--panel); color:var(--text); border:1px solid var(--line); font-weight:500;}
+  .btn.danger{background:#B33; color:#fff;}
+  .btn:focus-visible{outline:2px solid var(--text);}
+  .row{display:flex; gap:8px;}
+  .row > *{flex:1;}
+
+  .topic-item{display:flex; align-items:center; gap:10px; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; cursor:pointer;}
+  .topic-item.selected{border-color:var(--accent);}
+  .topic-item .t-name{flex:1; font-weight:500;}
+  .topic-item .t-count{font-size:12px; color:var(--muted);}
+  .topic-item .t-del{background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:4px;}
+
+  .p-card{display:flex; align-items:center; gap:12px; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; cursor:pointer;}
+  .p-card.selected{border-color:var(--accent); background:var(--panel2);}
+  .p-face{font-size:26px;}
+  .p-name{font-weight:700;}
+  .p-desc{font-size:12px; color:var(--muted);}
+  .note{font-size:12px; color:var(--muted); line-height:1.5;}
+
+  #memcanvas{
+    width:100%; flex:1; min-height:320px; touch-action:none;
+    background:radial-gradient(circle at 50% 40%, var(--panel) 0%, var(--bg) 75%);
+    border:1px solid var(--line); border-radius:14px;
+  }
+
+  #quizcard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px;}
+  #quiz-q{font-size:17px; font-weight:500; line-height:1.4;}
+  #quiz-feedback{font-size:14px; line-height:1.5;}
+  .scoreline{display:flex; gap:6px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<header>
+  <div id="orb">🙂</div>
+  <div class="head-info">
+    <h1 id="botname">Nova</h1>
+    <div class="chips mono">
+      <span class="chip">⭐ <b id="c-level">Lv 1</b></span>
+      <span class="chip"><b id="c-mood">🤔 curious</b></span>
+      <span class="chip">🧠 <b id="c-facts">0</b></span>
+      <span class="chip">📖 <b id="c-words">0</b></span>
+      <span class="chip">session <b id="c-session">1</b></span>
+    </div>
+  </div>
+  <button id="voicebtn" aria-label="Toggle Nova's voice">🔇</button>
+</header>
+
+<nav>
+  <button class="active" data-tab="chat">💬 Chat</button>
+  <button data-tab="teach">📚 Teach</button>
+  <button data-tab="quiz">🎓 Quiz</button>
+  <button data-tab="memories">🕸️ Memory</button>
+  <button data-tab="net">🧠 Net</button>
+  <button data-tab="train">🎯 Train</button>
+  <button data-tab="topics">📂 Topics</button>
+  <button data-tab="persona">🎭 Style</button>
+</nav>
+
+<main>
+  <!-- CHAT -->
+  <section id="tab-chat" class="tab active">
+    <div id="teachbar"></div>
+    <div id="chatlog"></div>
+    <div id="inputbar">
+      <input id="msg" type="text" placeholder="Say something…" autocomplete="off">
+      <button id="micbtn" class="roundbtn" aria-label="Talk to Nova" style="display:none">🎤</button>
+      <button id="imaginebtn" class="roundbtn" aria-label="Imagine a sentence">✨</button>
+      <button id="send">Send</button>
+    </div>
+  </section>
+
+  <!-- TEACH -->
+  <section id="tab-teach" class="tab">
+    <div class="panel-pad">
+      <h2>Teach one fact</h2>
+      <div id="teach-dest" class="note" style="color:var(--accent); font-weight:600;">→ Teaching into: 'general'</div>
+      <div>
+        <label for="t-topic">Topic</label>
+        <div class="row">
+          <select id="t-topic"></select>
+          <input id="t-newtopic" type="text" placeholder="…or new topic name">
+        </div>
+      </div>
+      <div><label for="t-q">Question</label><input id="t-q" type="text" placeholder="what is mars"></div>
+      <div><label for="t-a">Answer</label><input id="t-a" type="text" placeholder="Mars is the red planet"></div>
+      <button class="btn" id="t-add">Teach it</button>
+
+      <h2 style="margin-top:10px">🌐 Study from the internet</h2>
+      <p class="note">Nova reads only credible, openly-licensed sources: the Wikimedia library (encyclopedias, how-to manuals, courses, travel guides) and Stack Exchange (expert answers ranked by community votes). Pick a subject, a source, and a size.</p>
+      <div><label for="w-subject">Subject</label><input id="w-subject" type="text" placeholder="Saturn, dinosaurs, Minecraft…"></div>
+      <div><label for="w-topic">Save into topic</label><input id="w-topic" type="text" placeholder="space (created if new)"></div>
+      <div>
+        <label for="w-source">Where to read from (all credible sources)</label>
+        <select id="w-source">
+          <option value="mix">🌍 Everything credible (mix)</option>
+          <option value="wikipedia">📕 Wikipedia — encyclopedia facts</option>
+          <option value="simple">🧒 Simple Wikipedia — plain explanations</option>
+          <option value="wikibooks">📘 Wikibooks — how-to manuals</option>
+          <option value="wikiversity">🎓 Wikiversity — courses & lessons</option>
+          <option value="wikivoyage">🗺️ Wikivoyage — travel guides</option>
+          <option value="wiktionary">📖 Wiktionary — word definitions & etymology</option>
+          <option value="arxiv">📄 arXiv — real academic paper abstracts</option>
+          <option value="openlibrary">📚 Open Library — real book descriptions</option>
+          <option value="howto">🛠️ Stack Exchange — expert how-to Q&A</option>
+        </select>
+      </div>
+      <div>
+        <label for="w-size">How much to read</label>
+        <select id="w-size">
+          <option value="20">Standard — ~20 facts</option>
+          <option value="100">Big dump — ~100 facts</option>
+          <option value="300">MEGA dump — ~300 facts 📦</option>
+          <option value="1000">GIGA dump — ~1000 facts 🌋</option>
+        </select>
+      </div>
+      <button class="btn" id="w-study">Study</button>
+
+      <h2 style="margin-top:10px">Bulk teach</h2>
+      <p class="note">Paste many facts at once — one per line:<br><span class="mono">what is mars | Mars is the red planet</span></p>
+      <textarea id="t-bulk" placeholder="question | answer&#10;question | answer"></textarea>
+      <button class="btn ghost" id="t-bulkadd">Add all lines</button>
+      <div class="note" id="t-status"></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="tab-quiz" class="tab">
+    <div class="panel-pad">
+      <h2>🎓 Nova quizzes you</h2>
+      <p class="note">Nova asks from its current chat scope (change it in 📂 Topics). Correct answers earn you +10 XP for Nova.</p>
+      <div id="quizcard">
+        <div id="quiz-q">Tap "New question" to start!</div>
+        <input id="quiz-a" type="text" placeholder="Your answer…">
+        <div class="row">
+          <button class="btn" id="quiz-submit">Answer</button>
+          <button class="btn ghost" id="quiz-next">New question</button>
+        </div>
+        <div id="quiz-feedback"></div>
+      </div>
+      <div class="scoreline mono">
+        <span class="chip">score <b id="q-score">0/0</b></span>
+        <span class="chip">streak <b id="q-streak">0</b></span>
+        <span class="chip">best streak <b id="q-best">0</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MEMORIES -->
+  <section id="tab-memories" class="tab">
+    <div class="panel-pad" style="flex:1; min-height:0;">
+      <h2>🕸️ Nova's mind — every memory, connected</h2>
+      <p class="note">Colored hubs are topics; dots are memories in their topic's color. Pinch or scroll to zoom, drag space to pan, drag dots to rearrange, double-tap to reset. On big brains, idea-links stay hidden until you tap a memory or zoom in close — otherwise hundreds of threads turn into a hairball.</p>
+      <input id="memsearch" type="text" placeholder="🔎 Search Nova's memories…">
+      <canvas id="memcanvas"></canvas>
+      <div id="memdetail" class="note" style="display:none; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px;"><span></span> <button id="memforget" class="btn danger" style="display:none; padding:6px 10px; font-size:12px; margin-top:6px;">Forget this memory</button></div>
+    </div>
+  </section>
+
+  <!-- NEURAL NET -->
+  <section id="tab-net" class="tab">
+    <div class="panel-pad" style="flex:1; min-height:0;">
+      <h2>🧠 Nova's neural network — live</h2>
+      <p class="note" id="net-info">Waiting for the network to train…</p>
+      <div class="row">
+        <select id="net-size">
+          <option value="auto">🌱 Auto — grows with the brain</option>
+          <option value="large">💪 Large — ~1.2 million parameters</option>
+          <option value="max">🔥 MAXIMUM — ~4.7 million parameters</option>
+        </select>
+      </div>
+      <input id="net-probe" type="text" placeholder="Type a question and watch the thought flow →">
+      <canvas id="netcanvas" style="width:100%; flex:1; min-height:300px; background:radial-gradient(circle at 50% 40%, var(--panel) 0%, var(--bg) 75%); border:1px solid var(--line); border-radius:14px;"></canvas>
+      <p class="note">Left → right: your words → hidden layer 1 → hidden layer 2 → topic verdict. Teal links push a signal up, pink links push it down; brighter neurons are firing harder. This is the real network — every line is a real learned weight.</p>
+    </div>
+  </section>
+
+  <!-- TRAIN -->
+  <section id="tab-train" class="tab">
+    <div class="panel-pad">
+      <h2>🎯 Pick an agent to train directly</h2>
+      <p class="note">Assign topics to an agent so it — and only it — answers from them. Feed it single facts, bulk pastes, or a Deep Study, all scoped to this agent.</p>
+      <div id="train-agentlist"></div>
+
+      <div id="train-panel" style="display:none; flex-direction:column; gap:14px;">
+        <h2 id="train-heading" style="margin-top:6px">Training: —</h2>
+        <div class="note" id="train-stats"></div>
+
+        <label>Topics owned by this agent</label>
+        <div id="train-topiclist"></div>
+        <div class="row">
+          <select id="train-existing"></select>
+          <button class="btn ghost" id="train-assign">Assign</button>
+        </div>
+        <div class="row">
+          <input id="train-newtopic" type="text" placeholder="…or create + assign a new topic">
+          <button class="btn ghost" id="train-createassign">Create</button>
+        </div>
+
+        <h2 style="margin-top:6px">Teach one fact</h2>
+        <div><label for="tr-q">Question</label><input id="tr-q" type="text" placeholder="what is a for loop"></div>
+        <div><label for="tr-a">Answer</label><input id="tr-a" type="text" placeholder="Repeats code for each item"></div>
+        <button class="btn" id="tr-add">Teach it</button>
+
+        <h2 style="margin-top:6px">Bulk teach</h2>
+        <textarea id="tr-bulk" placeholder="question | answer&#10;question | answer"></textarea>
+        <button class="btn ghost" id="tr-bulkadd">Add all lines</button>
+
+        <h2 style="margin-top:6px">🌐 Deep Study directly into this agent</h2>
+        <div><label for="tr-subject">Subject</label><input id="tr-subject" type="text" placeholder="python, black holes, sourdough…"></div>
+        <div>
+          <label for="tr-source">Source</label>
+          <select id="tr-source">
+            <option value="mix">🌍 Everything credible (mix)</option>
+            <option value="wikipedia">📕 Wikipedia</option>
+            <option value="simple">🧒 Simple Wikipedia</option>
+            <option value="wikibooks">📘 Wikibooks — how-to manuals</option>
+            <option value="wikiversity">🎓 Wikiversity</option>
+            <option value="wikivoyage">🗺️ Wikivoyage</option>
+            <option value="wiktionary">📖 Wiktionary — definitions</option>
+            <option value="arxiv">📄 arXiv — academic papers</option>
+            <option value="openlibrary">📚 Open Library — books</option>
+            <option value="howto">🛠️ Stack Exchange — expert how-to</option>
+          </select>
+        </div>
+        <div>
+          <label for="tr-size">How much</label>
+          <select id="tr-size">
+            <option value="20">Standard — ~20</option>
+            <option value="100">Big — ~100</option>
+            <option value="300">MEGA — ~300</option>
+            <option value="1000">GIGA — ~1000</option>
+          </select>
+        </div>
+        <button class="btn" id="tr-study">Study into this agent</button>
+        <div class="note" id="tr-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOPICS -->
+  <section id="tab-topics" class="tab">
+    <div class="panel-pad">
+      <h2>Chat scope — which knowledge to use</h2>
+      <div id="topiclist"></div>
+      <h2 style="margin-top:10px">Backup</h2>
+      <div class="row">
+        <button class="btn ghost" id="exportbtn">Export brain</button>
+        <button class="btn ghost" id="importbtn">Import brain</button>
+      </div>
+      <input type="file" id="importfile" accept=".json" style="display:none">
+      <p class="note">Export downloads everything (knowledge + memory) as a file. Import restores it.</p>
+      <h2 style="margin-top:10px">☠️ Danger zone</h2>
+      <button class="btn danger" id="wipebtn">Wipe Nova's memory</button>
+      <p class="note">Erases everything — all facts, topics, XP, levels, achievements, and what Nova knows about you. It restarts as a newborn Hatchling. Consider Export first! This cannot be undone.</p>
+    </div>
+  </section>
+
+  <!-- PERSONALITY -->
+  <section id="tab-persona" class="tab">
+    <div class="panel-pad">
+      <h2>Pick a personality</h2>
+      <div id="personalist"></div>
+      <h2 style="margin-top:10px">Edit this personality</h2>
+      <p class="note">One line per phrase — Nova picks randomly. Changes save instantly (and change its voice style too).</p>
+      <div><label for="p-face">Face (emoji)</label><input id="p-face" type="text" maxlength="4"></div>
+      <div><label for="p-color">Accent color</label><input id="p-color" type="color" style="width:100%; height:40px; background:var(--panel); border:1px solid var(--line); border-radius:10px;"></div>
+      <div><label for="p-unknown">"I don't know" phrases</label><textarea id="p-unknown"></textarea></div>
+      <div><label for="p-gotit">"Got it!" phrases</label><textarea id="p-gotit"></textarea></div>
+      <div><label for="p-greet">Greeting phrases</label><textarea id="p-greet"></textarea></div>
+      <button class="btn ghost" id="p-reset">Reset this personality to default</button>
+
+      <h2 style="margin-top:10px">🧠 The Council — Nova's experts</h2>
+      <p class="note">Nova is a team of 12 skill agents — Chat, Recall, Code, Write, Dream, Words, Scout, Teacher, Math, Sorter, Summarizer, and Analyst. A router reads each message and picks who does the job; the agent signs its reply in its own color and (with 🔊 on) speaks in its own voice. This is a mini "Mixture of Experts" — the real architecture inside big AIs. Tap an agent to rename it.</p>
+      <div id="expertlist"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* =====================================================
+   Nova v8 — a fully standalone learning AI.
+   brain    = what it knows (facts)
+   memory   = what it remembers about YOU
+   dialogue = how it's learning to TALK, from you
+===================================================== */
+
+/* ---------- safe persistent storage ---------- */
+const store = {
+  ok:false,
+  init(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); this.ok=true; }catch(e){ this.ok=false; } },
+  get(k){ if(!this.ok) return null; try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ if(!this.ok) return; try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+store.init();
+
+/* ---------- state ---------- */
+let brain = store.get("nova_brain") || {
+  general:{
+    "hello":"Hey there! Teach me things and I'll get smarter.",
+    "how are you":"Feeling bright! My brain grew since last time.",
+    "what can you do":"Chat, learn anything, study Wikipedia, quiz you, imagine sentences, and learn to talk like you. Try the tabs!"
+  }
+};
+let memory = Object.assign({
+  name:null, sessions:0, factsTaught:0, lastTopic:"all",
+  personality:"friendly", edits:{}, history:[],
+  voice:false, xp:0, achieved:[],
+  quizStats:{asked:0, correct:0, streak:0, best:0}
+}, store.get("nova_memory") || {});
+
+let scope = memory.lastTopic || "all";
+let pendingTeach = null;
+let awaitingName = false;
+let lastSubject = null;      // conversation context ("it" = this)
+let quizQ = null;
+
+/* ---------- personalities ---------- */
+const PRESETS = {
+  friendly:{ name:"Friendly", face:"🙂", color:"#4FD8EB", desc:"Warm, upbeat, encouraging.", voice:{pitch:1, rate:1},
+    greet:["Hey {n}! Ready to make me smarter?","Welcome back {n}! I missed learning with you.","Hi {n}! What are we exploring today?"],
+    unknown:["Hmm, I don't know that yet — teach me? Just type the answer!","Ooh, a new one! What should I say? Type the answer to teach me.","I haven't learned that yet. Want to teach me? Type the answer!"],
+    gotit:["Got it! My brain just grew. 🧠","Learned! Ask me again anytime.","Saved forever! Thanks, {n}."],
+    chat:["Haha, nice! What else is on your mind, {n}?","I'm all ears! Want to quiz me or teach me something?","Good vibes! Ask me anything — or hit ✨ and I'll imagine something."] },
+  sassy:{ name:"Sassy", face:"😏", color:"#FF7AB6", desc:"Confident with a little attitude.", voice:{pitch:1.25, rate:1.05},
+    greet:["Oh look who's back. Missed me, {n}?","Finally, {n}. I was getting bored.","Hey {n}. Let's make me brilliant, obviously."],
+    unknown:["Excuse me? Nobody taught me that. Type the answer, I'm waiting…","Not in my brain. Whose fault is that? Teach me — type the answer.","I know a lot, but not THAT. Fix it — type the answer."],
+    gotit:["Obviously I learned that instantly.","Fine, it's in my brain now. You're welcome.","Memorized. I'm basically a genius now."],
+    chat:["Uh huh. Fascinating. Got any actual questions for me?","Cool story, {n}. Ask me something, I dare you.","I'm listening… barely. Quiz me if you think you can stump me."] },
+  robot:{ name:"Robot", face:"🤖", color:"#9AF04A", desc:"Precise. Logical. Beep.", voice:{pitch:0.5, rate:0.9},
+    greet:["SYSTEM ONLINE. Hello, {n}.","Boot complete. Awaiting input, {n}.","Unit ready. Knowledge acquisition available, {n}."],
+    unknown:["ERROR 404: Answer not found. Input answer to store in database.","Query unrecognized. Provide answer for storage.","Data missing. Transmit correct response now."],
+    gotit:["Data stored. Efficiency +1.","Record saved to database. Beep.","Knowledge module updated successfully."],
+    chat:["Acknowledged. Awaiting query, {n}.","Input received. Beep. Ask me a question to engage knowledge core.","Social subroutine active. Proceed."] },
+  pirate:{ name:"Pirate", face:"🏴‍☠️", color:"#FFB84A", desc:"Arr. Knowledge be treasure.", voice:{pitch:0.8, rate:0.95},
+    greet:["Ahoy, {n}! Ready to fill me treasure chest o' knowledge?","Arr, welcome aboard, {n}!","Avast, {n}! What wisdom do ye bring today?"],
+    unknown:["Blimey, that ain't in me chest o' knowledge! Teach me, matey — type the answer!","Arr, ye stumped me! Type the answer an' I'll stow it away.","Shiver me circuits, I don't know! Teach me, sailor."],
+    gotit:["Treasure stowed in the hold! Arr!","That knowledge be mine now, matey!","Marked on me map forever!"],
+    chat:["Arr, good to hear it, {n}! Got any questions for ol' Nova?","Aye aye! Ask me somethin' or let's raid Wikipedia for treasure!","Ha! Ye talk like a true sailor. What shall we learn today?"] },
+  wizard:{ name:"Wizard", face:"🧙", color:"#B48CFF", desc:"Mysterious keeper of lore.", voice:{pitch:0.65, rate:0.85},
+    greet:["Ah, {n}, the stars foretold your return…","Greetings, {n}. My tome of knowledge awaits.","Welcome, apprentice {n}. What shall we study?"],
+    unknown:["That knowledge lies beyond my tome… inscribe the answer, and I shall keep it.","Even wizards have gaps in their grimoire. Teach me the incantation — type the answer.","Mysterious! Share the answer, and it joins my eternal scrolls."],
+    gotit:["Inscribed in the eternal grimoire! ✨","The spell of knowledge is cast!","So it is written, so I shall remember."],
+    chat:["Indeed, {n}… the universe hums in agreement. Ask, and I shall answer.","Mmm, curious words. What knowledge do you seek?","The stars are chatty tonight. Pose me a question, apprentice."] }
+};
+function P(){
+  const base = PRESETS[memory.personality] || PRESETS.friendly;
+  const edits = (memory.edits||{})[memory.personality] || {};
+  return Object.assign({}, base, edits);
+}
+function pick(list){ return list[Math.floor(Math.random()*list.length)].replaceAll("{n}", memory.name||"friend"); }
+
+/* ---------- tiny NLP toolkit ---------- */
+const STOP = new Set(["what","is","the","a","an","who","how","do","does","are","was","were","in","of","to","it","i","you","and","or","but","with","me","my","tell","about","on","for","that","this","can","using","whats","its","mean","means","meaning","define","definition","word","wassup","sup"]);
+const clean = t => t.toLowerCase().replace(/[?!.,;:'"]/g,"").trim();
+const stem  = w => (w.length>3 && w.endsWith("s")) ? w.slice(0,-1) : w;
+const keywords = t => clean(t).split(/\s+/).filter(w=>w && !STOP.has(w)).map(stem);
+
+function similarity(a,b){
+  if(a===b) return 1;
+  const pairs = s => { const p=[]; for(let i=0;i<s.length-1;i++) p.push(s.slice(i,i+2)); return p; };
+  const pa=pairs(a), pb=pairs(b);
+  if(!pa.length || !pb.length) return 0;
+  const setB=[...pb]; let hits=0;
+  for(const x of pa){ const i=setB.indexOf(x); if(i>-1){ hits++; setB.splice(i,1);} }
+  return (2*hits)/(pa.length+pb.length);
+}
+/* typo-tolerant word comparison: 'jupitr' still matches 'jupiter' */
+function wordsMatch(a,b){
+  return a===b || (a.length>3 && b.length>3 && similarity(a,b)>=0.7);
+}
+
+function knowledgeInScope(){
+  if(scope==="all"){ const m={}; for(const t in brain) Object.assign(m, brain[t]); return m; }
+  return brain[scope] || {};
+}
+
+/* SMART RETRIEVAL — returns {q, a} or null */
+function findAnswer(text, know){
+  const q = clean(text); know = know || knowledgeInScope();
+  let best=null, bs=0;
+  for(const k in know){ const s=similarity(q,k); if(s>bs){bs=s;best=k;} }
+  if(bs>=0.8) return {q:best, a:know[best]};
+
+  const uwArr = keywords(text);
+  if(!uwArr.length) return null;
+  const scored=[];
+  for(const k in know){
+    const kw = keywords(k); if(!kw.length) continue;
+    let overlap=0; for(const w of kw) if(uwArr.some(u=>wordsMatch(u,w))) overlap++;
+    // how much of the USER's question does this fact explain?
+    let ucov=0; for(const u of uwArr) if(kw.some(w=>wordsMatch(u,w))) ucov++;
+    const userOk = uwArr.length<2 || ucov/uwArr.length>=0.6;
+    scored.push({k, score:overlap/kw.length, userOk});
+  }
+  scored.sort((a,b)=>b.score-a.score);
+  const top=scored.find(s=>s.userOk);
+  if(!top || top.score<0.66) return null;
+  const bestQ=top.k;
+  /* 🧩 blending: gather close runner-ups with different answers */
+  const alts=[];
+  for(const s of scored.slice(0,5)){
+    if(s.k!==bestQ && s.userOk && s.score>=0.5 && know[s.k]!==know[bestQ] && !alts.includes(know[s.k])) alts.push(know[s.k]);
+  }
+  return {q:bestQ, a:know[bestQ], alts:alts.slice(0,1)};
+}
+
+/* CONVERSATION CONTEXT — "how big is it" knows what "it" means */
+function findAnswerInContext(text, know){
+  let res=findAnswer(text, know);
+  if(!res && lastSubject){
+    const swapped=text.replace(/\b(it|that|this|they|them|those|these)\b/gi, lastSubject);
+    res=findAnswer(swapped!==text ? swapped : text+" "+lastSubject, know);
+  }
+  if(res) lastSubject=subjectOf(res.q)||lastSubject;
+  return res;
+}
+
+/* MACHINE LEARNING: TF-IDF topic guesser */
+function trainClassifier(){
+  const counts=Object.create(null);
+  for(const t in brain){
+    counts[t]=Object.create(null);
+    for(const q in brain[t])
+      for(const w of keywords(q+" "+brain[t][q]))
+        counts[t][w]=(counts[t][w]||0)+1;
+  }
+  const nT=Object.keys(counts).length, inTopics=Object.create(null);
+  for(const t in counts) for(const w in counts[t]) inTopics[w]=(inTopics[w]||0)+1;
+  const idf=Object.create(null); for(const w in inTopics) idf[w]=Math.log(nT/inTopics[w])+1;
+  return {counts, idf};
+}
+function guessTopic(text){
+  const nn=nnPredict(text);            // 🧠 the neural network gets first say
+  if(nn) return nn.topic;
+  const {counts, idf} = trainClassifier();
+  const words = keywords(text);
+  let best=null, bs=0;
+  for(const t in counts){
+    let total=0; for(const w in counts[t]) total+=counts[t][w];
+    if(!total) continue;
+    let s=0; for(const w of words) s+=(counts[t][w]||0)*(idf[w]||0);
+    s/=total;
+    if(s>bs){bs=s;best=t;}
+  }
+  return bs>0 ? best : null;
+}
+
+/* Nova develops its OWN way of talking from what it reads —
+   it never records or copies how the user speaks. */
+
+/* ---------- 🌐 learning from the internet (Wikipedia) ---------- */
+const WIKI="https://en.wikipedia.org";
+/* Nova's library card: every source here is a credible, openly
+   licensed knowledge site that allows apps to read it directly. */
+const HOSTS={
+  wikipedia:"https://en.wikipedia.org",
+  simple:"https://simple.wikipedia.org",
+  wikibooks:"https://en.wikibooks.org",
+  wikiversity:"https://en.wikiversity.org",
+  wikivoyage:"https://en.wikivoyage.org",
+  wiktionary:"https://en.wiktionary.org",
+};
+const HOST_LABEL={wikipedia:"Wikipedia", simple:"Simple Wikipedia", wikibooks:"Wikibooks", wikiversity:"Wikiversity", wikivoyage:"Wikivoyage", wiktionary:"Wiktionary"};
+
+/* ---------- 📄 arXiv: real peer-submitted academic abstracts (non-wiki!) ---------- */
+async function arxivStudy(subject, want){
+  const url=`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(subject)}&start=0&max_results=${Math.min(want,100)}`;
+  const r=await fetch(url);
+  const text=await r.text();
+  const doc=new DOMParser().parseFromString(text,"text/xml");
+  const entries=[...doc.getElementsByTagName("entry")];
+  return entries.map(e=>{
+    const title=(e.getElementsByTagName("title")[0]?.textContent||"").replace(/\s+/g," ").trim();
+    const summary=(e.getElementsByTagName("summary")[0]?.textContent||"").replace(/\s+/g," ").trim();
+    return {title, extract:summary};
+  }).filter(p=>p.title && p.extract);
+}
+/* ---------- 📖 Open Library: real published book descriptions (non-wiki!) ---------- */
+async function openLibraryStudy(subject, want){
+  const r=await fetchJSON(`https://openlibrary.org/search.json?q=${encodeURIComponent(subject)}&limit=${Math.min(want,100)}&fields=title,first_sentence,subject`);
+  const docs=(r.docs||[]);
+  return docs.map(d=>{
+    const fs=d.first_sentence ? (Array.isArray(d.first_sentence)?d.first_sentence[0]:d.first_sentence) : null;
+    const subj=(d.subject||[]).slice(0,6).join(", ");
+    const extract = fs || (subj ? `A published work covering: ${subj}.` : null);
+    return extract ? {title:d.title, extract} : null;
+  }).filter(Boolean);
+}
+/* Stack Exchange: vote-ranked expert answers. Which community fits? */
+function siteFor(q){
+  if(/\b(code|coding|python|javascript|program|function|bug|software|app)\b/.test(q)) return "stackoverflow";
+  if(/\b(cook|bake|recipe|food|bread|dough|kitchen|meal|fry|boil)\b/.test(q)) return "cooking";
+  if(/\b(fix|build|drill|wall|wood|paint|plumb|repair|install|screw|pipe)\b/.test(q)) return "diy";
+  if(/\b(plant|garden|grow|soil|seed|flower|tree)\b/.test(q)) return "gardening";
+  if(/\b(computer|windows|mac|linux|wifi|router|laptop|phone)\b/.test(q)) return "superuser";
+  return "lifehacks";
+}
+function htmlToText(h){
+  return h.replace(/<li[^>]*>/g,"\n• ").replace(/<\/(p|div|br|ol|ul|pre)>/g,"\n")
+          .replace(/<[^>]+>/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<")
+          .replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+          .replace(/\n{3,}/g,"\n\n").trim();
+}
+async function seHowTo(query, want){
+  const site=siteFor(query);
+  const items=[];
+  let page=1;
+  while(items.length<want && page<=12){
+    /* 1) a page of relevant answered questions on the right community */
+    const s=await fetch(`https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&accepted=True&q=${encodeURIComponent(query)}&site=${site}&page=${page}&pagesize=${Math.min(Math.max(want,20),100)}`);
+    const sd=await s.json();
+    const qs=(sd.items||[]).filter(i=>i.accepted_answer_id);
+    if(!qs.length) break;
+    /* 2) fetch that whole page's accepted answers in ONE request */
+    const ids=qs.map(i=>i.accepted_answer_id).join(";");
+    const a=await fetch(`https://api.stackexchange.com/2.3/answers/${ids}?site=${site}&filter=withbody&pagesize=100`);
+    const ad=await a.json();
+    const byId={}; for(const an of (ad.items||[])) byId[an.answer_id]=an;
+    for(const q of qs){
+      if(items.length>=want) break;
+      const an=byId[q.accepted_answer_id];
+      if(!an || !an.body) continue;
+      let body=htmlToText(an.body);
+      if(body.length>600) body=body.slice(0,597).trimEnd()+"…";
+      items.push({title:htmlToText(q.title), body});
+    }
+    if(!sd.has_more) break;
+    page++;
+    await new Promise(r=>setTimeout(r,200)); // be polite to Stack Exchange
+  }
+  return {site, items};
+}
+async function wikiSearch(term){
+  /* Full-text search: finds the most relevant article even for
+     natural questions, not just exact title matches. */
+  const r=await fetch(`${WIKI}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&srlimit=1&format=json&origin=*`);
+  const d=await r.json();
+  const hits=d.query && d.query.search;
+  return (hits && hits.length) ? hits[0].title : null;
+}
+async function wikiSummary(title){
+  const r=await fetch(`${WIKI}/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+  if(!r.ok) return null;
+  const d=await r.json();
+  return d.extract ? {title:d.title, extract:d.extract} : null;
+}
+async function wikiRelated(title){
+  const r=await fetch(`${WIKI}/api/rest_v1/page/related/${encodeURIComponent(title)}`);
+  if(!r.ok) return [];
+  const d=await r.json();
+  return (d.pages||[]).filter(p=>p.extract).map(p=>({title:p.titles.normalized, extract:p.extract}));
+}
+function subjectOf(text){
+  const words=clean(text).split(/\s+/).filter(w=>w && !STOP.has(w));
+  return words.join(" ") || clean(text);
+}
+async function lookUp(question){
+  const subject=subjectOf(question);
+  const scoutX=asExpert(getExpert("scout"));
+  /* HOW-questions get expert how-to answers from Stack Exchange */
+  if(/^how\b/.test(clean(question))){
+    botSay(`🛠️ Asking the experts how…`,{log:false, ...scoutX});
+    try{
+      const {site, items}=await seHowTo(clean(question).replace(/^how (do|can|to|does|would|should) (i|you|we)?\s*/,""), 1);
+      if(items.length){
+        const it=items[0];
+        const topic = scope!=="all" ? scope : (guessTopic(question)||"howto");
+        ensureTopic(topic);
+        brain[topic][clean(question)]=it.body+`\n\n(from the ${site} expert community)`;
+        memory.factsTaught++; addXP(5); saveAll();
+        bumpStat(getExpert("scout"),"answered");
+        botSay(`🛠️ ${it.title}\n\n${it.body}\n\n🧠 Learned from the ${site} community — saved under '${topic}'.`,scoutX);
+        return;
+      }
+    }catch(e){/* fall through to the encyclopedia */}
+  }
+  botSay(`🌐 Searching the internet for "${subject}"…`,{log:false, ...scoutX});
+  try{
+    /* search with the whole question first (best relevance),
+       then with just the keywords as a fallback */
+    let title=await wikiSearch(clean(question));
+    if(!title) title=await wikiSearch(subject);
+    const page=title ? await wikiSummary(title) : null;
+    if(!page){
+      pendingTeach={q:question}; setTeachbar();
+      botSay(`I couldn't find "${subject}" out there. Can you teach me instead?`);
+      return;
+    }
+    let ans=page.extract;
+    if(ans.length>350) ans=ans.slice(0,347).trimEnd()+"…";
+    const topic = scope!=="all" ? scope : (guessTopic(question)||"internet");
+    ensureTopic(topic);
+    brain[topic][clean(question)]=ans;
+    memory.factsTaught++; addXP(5); saveAll();
+    achieve("scholar","🌐 Scholar — Nova learned from the internet for the first time!");
+    lastSubject=subjectOf(question);
+    bumpStat(getExpert("scout"),"answered");
+    botSay(ans+`\n\n🧠 Learned from Wikipedia ("${page.title}") — saved under '${topic}'.`,scoutX);
+  }catch(err){
+    pendingTeach={q:question}; setTeachbar();
+    botSay("I couldn't reach the internet 😕 (If you're previewing this inside Claude, download the file and open it in your browser — lookups work there.) You can still teach me the answer!");
+  }
+}
+let studying=false, deepLog=[];
+async function fetchJSON(url, tries){
+  /* retry wrapper: one bad response never kills a whole dump */
+  let lastErr=null;
+  for(let a=0;a<(tries||3);a++){
+    try{
+      const r=await fetch(url);
+      if(!r.ok){ lastErr="HTTP "+r.status; await new Promise(s=>setTimeout(s,400*(a+1))); continue; }
+      return await r.json();
+    }catch(e){ lastErr=(e&&e.message)||"network error"; await new Promise(s=>setTimeout(s,400*(a+1))); }
+  }
+  throw new Error(lastErr||"request failed");
+}
+async function wikiSearchIds(subject, offset, host){
+  /* phase 1: relevance-ranked page IDs, 50 at a time — clean
+     pagination with no continue-token weirdness */
+  const d=await fetchJSON(`${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(subject)}&srlimit=50&sroffset=${offset}&format=json&origin=*`);
+  const hits=(d.query&&d.query.search)||[];
+  return hits.map(h=>({pageid:h.pageid, title:h.title}));
+}
+async function wikiExtractsByIds(ids, host){
+  /* phase 2: fetch intro text for up to 20 explicit pages per call,
+     following continue tokens until every page has its text */
+  const out=[];
+  for(let i=0;i<ids.length;i+=20){
+    const chunk=ids.slice(i,i+20);
+    const merged={};
+    let cont=null;
+    for(let hop=0;hop<6;hop++){
+      let url=`${host}/w/api.php?action=query&pageids=${chunk.map(c=>c.pageid).join("|")}&prop=extracts&exintro=1&explaintext=1&exlimit=20&format=json&origin=*`;
+      if(cont) for(const k in cont) url+=`&${k}=${encodeURIComponent(cont[k])}`;
+      let d;
+      try{ d=await fetchJSON(url); }
+      catch(e){ deepLog.push("extract chunk failed: "+e.message); break; }
+      const pages=(d.query&&d.query.pages)||{};
+      for(const id in pages){
+        const p=pages[id];
+        if(!merged[id]) merged[id]={title:p.title, extract:p.extract};
+        else if(p.extract && !merged[id].extract) merged[id].extract=p.extract;
+      }
+      if(!d.continue) break;
+      cont=d.continue;
+    }
+    for(const id in merged)
+      if(merged[id].extract && merged[id].extract.length>40) out.push(merged[id]);
+    await new Promise(r2=>setTimeout(r2,120)); // be polite
+  }
+  return out;
+}
+async function deepStudy(subject, topic, statusEl, target, source){
+  if(studying){ statusEl.textContent="Already studying — one dump at a time!"; return; }
+  studying=true; source=source||"wikipedia";
+  try{
+    ensureTopic(topic);
+    let added=0, offset=0, dry=0;
+    const saveFact=(t,extract,prefix)=>{
+      let a=extract; if(a.length>600) a=a.slice(0,597).trimEnd()+"…";
+      const key=(prefix===undefined?"what is ":prefix)+clean(t);
+      if(typeof brain[topic][key]!=="string"){ brain[topic][key]=a; added++; return true; }
+      return false;
+    };
+
+    /* 🛠️ Stack Exchange how-to study: expert answers, vote-ranked */
+    if(source==="howto"){
+      const {site, items}=await seHowTo(subject, target);
+      for(const it of items){
+        if(added>=target) break;
+        saveFact(it.title, it.body+`\n\n(from the ${site} expert community)`, "");
+      }
+      statusEl.textContent=`🛠️ Studied "${subject}" on ${site}… ${added} how-tos learned`;
+    }else if(source==="arxiv"){
+      /* 📄 real academic abstracts — genuinely not a wiki */
+      const items=await arxivStudy(subject, target);
+      for(const it of items){ if(added>=target) break; saveFact(it.title, it.extract+" (via arXiv)", ""); }
+      statusEl.textContent = items.length
+        ? `📄 Studied ${added} academic abstracts about "${subject}" from arXiv.`
+        : `📄 arXiv had no papers matching "${subject}" — try a more academic/scientific phrasing.`;
+    }else if(source==="openlibrary"){
+      /* 📚 real published book descriptions — genuinely not a wiki */
+      const items=await openLibraryStudy(subject, target);
+      for(const it of items){ if(added>=target) break; saveFact(it.title, it.extract+" (via Open Library)", ""); }
+      statusEl.textContent = items.length
+        ? `📚 Studied ${added} book descriptions about "${subject}" from Open Library.`
+        : `📚 Open Library had nothing matching "${subject}" — try a broader subject.`;
+    }else{
+      /* 📚 wiki-family study: start with your chosen source(s), but
+         AUTOMATICALLY widen if they run dry before hitting the target —
+         first by pulling in the rest of the Wikimedia library, then by
+         broadening the search phrase itself. Real subjects often don't
+         have 1000 matches for one exact phrase on one exact site, but
+         usually do across the whole library with a broader net. */
+      let rotation = source==="mix"
+        ? ["wikipedia","simple","wikibooks","wikiversity","wikivoyage"]
+        : [source];
+      const allHosts=["wikipedia","simple","wikibooks","wikiversity","wikivoyage"];
+      const offsets={}, exhausted={};
+      const bySource={};
+      let querySubject=subject, widenedQuery=false, widenedLibrary=(source==="mix");
+      deepLog=["target "+target+" via "+rotation.join("+")];
+      let r=0, safety=Math.max(200, target*2), everSucceeded=false;
+      while(added<target && safety-->0){
+        let live=rotation.filter(s=>!exhausted[s]);
+        if(!live.length){
+          // widen 1: pull in the rest of the Wikimedia library
+          if(!widenedLibrary){
+            widenedLibrary=true;
+            rotation=allHosts; for(const s of allHosts) exhausted[s]=false;
+            deepLog.push("widening to the whole Wikimedia library");
+            live=rotation.filter(s=>!exhausted[s]);
+          }
+          // widen 2: broaden the search phrase itself (drop the last word)
+          else if(!widenedQuery && querySubject.trim().includes(" ")){
+            widenedQuery=true;
+            querySubject=querySubject.trim().split(/\s+/).slice(0,-1).join(" ");
+            for(const s of allHosts){ exhausted[s]=false; offsets[s]=0; }
+            deepLog.push(`broadening search to "${querySubject}"`);
+            live=rotation.filter(s=>!exhausted[s]);
+          }
+          if(!live.length){ deepLog.push("every credible source is exhausted for this subject"); break; }
+        }
+        const src=live[r%live.length]; r++;
+        const host=HOSTS[src];
+        const off=offsets[src]||0;
+        let ids=[];
+        try{ ids=await wikiSearchIds(querySubject, off, host); everSucceeded=true; }
+        catch(e){
+          deepLog.push(src+" search failed @"+off+": "+e.message);
+          exhausted[src]=true;
+          // if EVERY source has failed and none has ever worked, this is a
+          // connectivity problem, not "subject too narrow" — say so plainly
+          if(!everSucceeded && rotation.every(s=>exhausted[s])){
+            throw new Error("Can't reach the internet from here. If you're previewing this inside Claude, download the file and open it in your own browser instead.");
+          }
+          continue;
+        }
+        offsets[src]=off+50;
+        if(!ids.length){ deepLog.push(src+" ran out of results @"+off); exhausted[src]=true; continue; }
+        const fresh=ids.filter(p=>typeof brain[topic]["what is "+clean(p.title)]!=="string").slice(0, target-added+10);
+        deepLog.push(src+" @"+off+": "+ids.length+" hits, "+fresh.length+" new");
+        if(!fresh.length) continue;
+        statusEl.textContent=`🌐 Studying "${querySubject}" on ${HOST_LABEL[src]||src}… ${added}/${target} (reading ${fresh.length} pages)`;
+        const batch=await wikiExtractsByIds(fresh, host);
+        let newHere=0;
+        for(const p of batch){
+          if(added>=target) break;
+          if(saveFact(p.title, p.extract+(src!=="wikipedia"?` (via ${HOST_LABEL[src]||src})`:""))) newHere++;
+        }
+        bySource[src]=(bySource[src]||0)+newHere;
+        deepLog.push(src+" extracts: "+batch.length+" pages → "+newHere+" saved");
+        if(batch.length===0 && fresh.length>0) deepLog.push("⚠️ pages had no text — extract issue");
+        statusEl.textContent=`🌐 Studying "${subject}"… ${added}/${target} read`;
+        saveAll();
+      }
+      deepLog.push("by source: "+Object.entries(bySource).map(([s,n])=>s+"="+n).join(", "));
+    }
+    memory.factsTaught+=added; addXP(added*2); saveAll();
+    if(added>=100) setMood("sleepy",120000); else setMood("happy");
+    achieve("scholar","🌐 Scholar — Nova learned from the internet for the first time!");
+    if(added>=100) achieve("megadump","📦 Mega mind — Nova absorbed a 100+ fact data dump!");
+    statusEl.textContent = added>=target
+      ? `📚 Done! Learned exactly ${added} facts about "${subject}" into '${topic}'. Try ✨ imagine!`
+      : `📚 Stopped at ${added}/${target} facts. Diagnosis → ${deepLog.slice(-4).join(" | ")}`;
+  }catch(err){
+    saveAll();
+    statusEl.textContent=`Stopped by an error after ${deepLog.length} steps — everything read so far is saved. Diagnosis → ${(err&&err.message)||err} | ${deepLog.slice(-3).join(" | ")}`;
+  }
+  studying=false;
+}
+
+/* ---------- ✨ baby language model (Markov chain) ---------- */
+function corpusText(){
+  let out=[];
+  for(const t in brain) for(const q in brain[t]) out.push(brain[t][q]);
+  return out.join(" ");
+}
+function buildChain(){
+  const words=corpusText().split(/\s+/).filter(Boolean);
+  const chain=Object.create(null), starts=[];
+  for(let i=0;i<words.length-2;i++){
+    const key=(words[i]+" "+words[i+1]).toLowerCase();
+    (chain[key]=chain[key]||[]).push(words[i+2]);
+    if(i===0 || /[.!?]$/.test(words[i-1])) starts.push([words[i],words[i+1]]);
+  }
+  return {chain, starts, size:words.length};
+}
+function imagine(seedText, requireSeed=false){
+  const {chain, starts, size}=buildChain();
+  if(size<40 || !starts.length) return null;
+  let start=null;
+  const seeds=keywords(seedText||"");
+  if(seeds.length){
+    const cands=Object.keys(chain).filter(k=>seeds.some(s=>k.includes(s)));
+    if(cands.length){ const c=cands[Math.floor(Math.random()*cands.length)].split(" "); start=[c[0],c[1]]; }
+  }
+  if(!start){
+    if(requireSeed) return null; // musing only when it actually knows related words
+    start=starts[Math.floor(Math.random()*starts.length)];
+  }
+  const out=[start[0],start[1]];
+  for(let i=0;i<28;i++){
+    const key=(out[out.length-2]+" "+out[out.length-1]).toLowerCase();
+    const nexts=chain[key];
+    if(!nexts) break;
+    const next=nexts[Math.floor(Math.random()*nexts.length)];
+    out.push(next);
+    if(/[.!?]$/.test(next) && out.length>7) break;
+  }
+  let s=out.join(" ");
+  s=s[0].toUpperCase()+s.slice(1);
+  if(!/[.!?…]$/.test(s)) s+="…";
+  return {text:s, size};
+}
+
+/* ---------- 🌱 XP, levels, achievements ---------- */
+const LEVEL_NAMES=["Hatchling","Sprout","Student","Scholar","Sage","Genius","Mastermind","Legend"];
+function level(){ return Math.min(Math.floor(Math.sqrt(memory.xp/20))+1, LEVEL_NAMES.length); }
+function addXP(n){
+  const before=level();
+  memory.xp+=n;
+  const after=level();
+  if(after>before){
+    bubble("sys",`🌟 LEVEL UP! Nova is now Lv ${after} — ${LEVEL_NAMES[after-1]}!`);
+    setMood("excited");
+    speak(`Level up! I'm a ${LEVEL_NAMES[after-1]} now!`);
+  }
+  refreshChips();
+}
+function achieve(id,msg){
+  if(memory.achieved.includes(id)) return;
+  memory.achieved.push(id); saveAll();
+  bubble("sys","🏆 "+msg);
+}
+
+/* ---------- 🗣️ voice: speaking & listening ---------- */
+function speak(text, expertMod){
+  if(!memory.voice || !("speechSynthesis" in window)) return;
+  const cleanText=text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,"").replace(/https?:\S+/g,"").trim();
+  if(!cleanText) return;
+  const u=new SpeechSynthesisUtterance(cleanText);
+  const v=P().voice||{pitch:1,rate:1};
+  // the personality sets the base voice; the expert bends it into its own
+  u.pitch=v.pitch*(expertMod?expertMod.pitch:1);
+  u.rate=v.rate*(expertMod?expertMod.rate:1);
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog=null;
+
+/* ---------- 🎭 MOODS ----------
+   Nova's mood shifts with what happens to it. The mood shows in
+   the header and changes how fast it "thinks".                */
+const MOODS={
+  curious:{label:"🤔 curious", delay:1},
+  happy:{label:"😊 happy", delay:0.8},
+  excited:{label:"🤩 excited", delay:0.55},
+  proud:{label:"😌 proud", delay:0.8},
+  sleepy:{label:"😴 sleepy (so much reading!)", delay:1.8},
+};
+let mood="curious", moodTimer=null;
+function setMood(m, ms=60000){
+  mood=MOODS[m]?m:"curious";
+  const chip=document.getElementById("c-mood");
+  if(chip) chip.textContent=MOODS[mood].label;
+  clearTimeout(moodTimer);
+  if(mood!=="curious") moodTimer=setTimeout(()=>setMood("curious"), ms);
+}
+
+/* ---------- 🔍 READING COMPREHENSION ----------
+   Detect WHAT KIND of question was asked, then pull out the
+   sentence in the stored fact that actually answers it,
+   instead of reciting the whole thing.                        */
+function questionType(text){
+  const t=" "+text.toLowerCase()+" ";
+  if(/\bwhen\b|what year|how old/.test(t)) return "when";
+  if(/\bwho\b/.test(t)) return "who";
+  if(/\bwhere\b/.test(t)) return "where";
+  if(/how (many|much|big|far|hot|cold|fast|tall|long|heavy)/.test(t)) return "number";
+  if(/\bwhy\b/.test(t)) return "why";
+  return "general";
+}
+function extractAnswer(question, answerText){
+  if(answerText.length<160) return answerText; // already short
+  const qt=questionType(question);
+  if(qt==="general") return answerText;
+  const sentences=answerText.match(/(?:[^.!?]|[.!?](?=\d))+[.!?]+(?=\s+["A-Z]|\s*$)/g)||[answerText];
+  const qk=new Set(keywords(question));
+  let best=null, bs=-1;
+  for(const s of sentences){
+    let score=0;
+    for(const w of keywords(s)) if(qk.has(w)) score++;
+    if(qt==="when"   && /\b\d{3,4}\b|\d[\d.,]* ?(billion|million|thousand)|years? (ago|old)|century|january|february|march|april|may|june|july|august|september|october|november|december/i.test(s)) score+=3;
+    if(qt==="number" && /\d|half|twice|size|diameter|radius|km|kilometer|mile|meter|metre|feet|foot|ton|percent|degrees/i.test(s)) score+=3;
+    if(qt==="why"    && /because|due to|caused|reason|so that/i.test(s)) score+=3;
+    if(qt==="where"  && /\bin\b|\bat\b|\bnear\b|located/i.test(s)) score+=1.5;
+    if(qt==="who"    && /[a-z] [A-Z][a-z]/.test(s)) score+=1.5;
+    if(score>bs){bs=score;best=s.trim();}
+  }
+  return (best && bs>=3) ? best : answerText;
+}
+
+/* ---------- 🐣 CURIOSITY ----------
+   Every so often, Nova picks something it already knows and
+   quietly reads about it on Wikipedia — all by itself.        */
+let curiosityCount=0;
+async function curiosityTick(){
+  if(curiosityCount>=3 || pendingTeach || studying || awaitingName) return;
+  if(Math.random()>0.35) return;
+  const know=knowledgeInScope();
+  const qs=Object.keys(know);
+  if(qs.length<3) return;
+  try{
+    const seedQ=qs[Math.floor(Math.random()*qs.length)];
+    const seedWords=keywords(seedQ);
+    if(!seedWords.length) return;
+    const related=await wikiRelated(await wikiSearch(seedWords.join(" "))||"");
+    const fresh=related.find(p=>!know["what is "+clean(p.title)]);
+    if(!fresh) return;
+    let a=fresh.extract; if(a.length>350) a=a.slice(0,347).trimEnd()+"…";
+    const topic=guessTopic(fresh.title)|| (scope!=="all"?scope:"internet");
+    ensureTopic(topic);
+    brain[topic]["what is "+clean(fresh.title)]=a;
+    memory.factsTaught++; addXP(2); saveAll();
+    curiosityCount++;
+    setMood("happy");
+    achieve("selfstudy","🐣 Self-starter — Nova got curious and studied something all by itself!");
+    botSay(`🐣 I got curious and read about "${fresh.title}" on my own! Ask me about it sometime.`,{log:false});
+  }catch(e){/* offline — curiosity can wait */}
+}
+
+/* ---------- 🕸️ MEMORY GRAPH v2 ----------
+   A zoomable, searchable map of Nova's mind. Topics are colored
+   hubs, every memory is a dot in its topic's color, and lines
+   connect memories that share a rare idea. Pinch or scroll to
+   zoom, drag space to pan, drag dots to rearrange, tap a dot to
+   read it (its connections light up), double-tap to reset view. */
+let memNodes=[], memEdges=[], memAnim=null, memDrag=null, memSel=null, memSleep=false;
+let memW=700, memH=460;
+let cam={x:350, y:230, z:1};
+let memSearch="", memMatches=new Set(), memPanning=null, memPinch=null;
+
+function topicHue(i){ return (i*137)%360; }
+
+function memPhysicsStep(){
+  /* repulsion via a spatial grid: bin nodes into cells and only
+     compare neighbors — same physics, hugely faster at scale */
+  const CELL=130, grid={};
+  for(const n of memNodes){
+    const k=((n.x/CELL)|0)+","+((n.y/CELL)|0);
+    (grid[k]=grid[k]||[]).push(n);
+  }
+  for(const n of memNodes){
+    const gx=(n.x/CELL)|0, gy=(n.y/CELL)|0;
+    for(let cx=gx-1;cx<=gx+1;cx++) for(let cy=gy-1;cy<=gy+1;cy++){
+      const cell=grid[cx+","+cy]; if(!cell) continue;
+      for(const b of cell){
+        if(b===n || b.id<=n.id) continue;
+        let dx=n.x-b.x, dy=n.y-b.y;
+        let d=Math.sqrt(dx*dx+dy*dy); if(d<1){d=1; dx=1; dy=0;}
+        if(d<CELL){
+          // extra push when two nodes belong to DIFFERENT topics, so whole
+          // clusters separate from each other, not just individual dots
+          const crossTopic = n.type==="fact" && b.type==="fact" && n.topic!==b.topic;
+          const f=Math.min(1.4, (crossTopic?3200:2200)/(d*d));
+          const ma=(n.type==="topic"?0.3:1), mb=(b.type==="topic"?0.3:1);
+          n.vx+=dx/d*f*ma; n.vy+=dy/d*f*ma;
+          b.vx-=dx/d*f*mb; b.vy-=dy/d*f*mb;
+        }
+      }
+    }
+    n.vx+=(memW/2-n.x)*(memNodes.length>400?0.0004:0.0012); n.vy+=(memH/2-n.y)*(memNodes.length>400?0.0004:0.0012);
+  }
+  for(const e of memEdges){
+    const dx=e.b.x-e.a.x, dy=e.b.y-e.a.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    /* Hub tethers are a LEASH, not a spring: pull inward only once a
+       fact drifts past its orbit; apply NOTHING while inside it. A
+       symmetric spring here would drag every satellite to the exact
+       same radius over time, collapsing a filled disk into a hollow
+       ring — which is the "weird starburst" bug. Idea-links between
+       two facts stay real springs, since those should pull related
+       memories together. */
+    const f = e.hub ? (d>e.len ? (d-e.len)*0.02 : 0) : (d-e.len)*0.02;
+    const ma=(e.a.type==="topic"?0.3:1), mb=(e.b.type==="topic"?0.3:1);
+    e.a.vx+=dx/d*f*ma; e.a.vy+=dy/d*f*ma;
+    e.b.vx-=dx/d*f*mb; e.b.vy-=dy/d*f*mb;
+  }
+  let energy=0;
+  for(const n of memNodes){
+    if(n===memDrag){ n.vx=0; n.vy=0; continue; }
+    n.vx*=0.72; n.vy*=0.72;
+    const sp=Math.sqrt(n.vx*n.vx+n.vy*n.vy);
+    if(sp>3){ n.vx*=3/sp; n.vy*=3/sp; }
+    if(sp<0.06){ n.vx=0; n.vy=0; }
+    n.x+=n.vx; n.y+=n.vy;
+    n.x=Math.max(15,Math.min(memW-15,n.x)); n.y=Math.max(25,Math.min(memH-20,n.y));
+    energy+=n.vx*n.vx+n.vy*n.vy;
+  }
+  return energy;
+}
+
+function buildMemoryGraph(){
+  memNodes=[]; memEdges=[]; memSel=null; memMatches=new Set();
+  const topics=Object.keys(brain);
+  let total=0; for(const t of topics) total+=Object.keys(brain[t]).length;
+
+  /* the world grows with the mind so the web can always settle.
+     Scale by the BIGGEST single topic, not just the grand total —
+     a lopsided brain (one huge topic among small ones) needs room
+     sized to its densest cluster, or that cluster crushes itself. */
+  const biggest=Math.max(10, ...topics.map(t=>Object.keys(brain[t]).length));
+  const ws=Math.max(1, Math.sqrt(biggest/28));
+  memW=Math.round(700*ws); memH=Math.round(460*ws);
+  cam={x:memW/2, y:memH/2, z:Math.max(0.35, 1/ws)}; // start zoomed out enough to see it all
+
+  const topicNode={};
+  topics.forEach((t,i)=>{
+    const size=Object.keys(brain[t]).length;
+    const hubR=(170+2.2*Math.sqrt(size))*ws; // bigger topics sit proportionally further from center
+    const n={id:"T:"+t, type:"topic", label:t, count:size, hue:topicHue(i),
+             display:`${t} (${size})`,
+             x:memW/2+Math.cos(i/topics.length*6.283)*hubR,
+             y:memH/2+Math.sin(i/topics.length*6.283)*hubR*0.86,
+             vx:0, vy:0, r:12+Math.min(20,Math.sqrt(size))};
+    topicNode[t]=n; memNodes.push(n);
+  });
+
+  // EVERY memory becomes a node — no sampling
+  /* Object.create(null) = a dictionary with NO inherited keys, so words
+     like "constructor" can't collide with JavaScript built-ins */
+  const wordFreq=Object.create(null), factList=[];
+  for(const t of topics){
+    for(const q of Object.keys(brain[t])){
+      const kws=[...new Set(keywords(q))];
+      factList.push({t,q,kws});
+      for(const w of kws) wordFreq[w]=(wordFreq[w]||0)+1;
+    }
+  }
+  const wordIndex=Object.create(null);
+  factList.forEach((f,i)=>{
+    const hub=topicNode[f.t];
+    const topicSize=Object.keys(brain[f.t]).length;
+    const orbit=95*Math.sqrt(topicSize); // bigger topics claim proportionally more space
+    const ang=Math.random()*6.283, rad=Math.sqrt(Math.random())*orbit;
+    const n={id:"F:"+String(i).padStart(6,"0"), type:"fact", label:f.q, topic:f.t,
+             hue:hub.hue, kws:f.kws,
+             x:hub.x+Math.cos(ang)*rad, y:hub.y+Math.sin(ang)*rad,
+             vx:0, vy:0, r:total>1200?2.5:total>600?3.2:4.5};
+    memNodes.push(n);
+    // the tether length must match the orbit — otherwise every fact gets
+    // yanked back toward the hub regardless of how much room it was given
+    memEdges.push({a:hub, b:n, len:Math.max(30,orbit*0.55), hub:true});
+    for(const w of f.kws) (wordIndex[w]=wordIndex[w]||[]).push(n);
+  });
+
+  /* idea links: each RARE word chains the memories that share it */
+  const rareLimit=Math.max(2, factList.length*0.08);
+  const linkCount=Object.create(null);
+  for(const w in wordIndex){
+    const group=wordIndex[w];
+    if(group.length<2 || wordFreq[w]>rareLimit) continue;
+    for(let i=0;i<group.length-1;i++){
+      const a=group[i], b=group[i+1];
+      if((linkCount[a.id]||0)>3 || (linkCount[b.id]||0)>3) continue;
+      memEdges.push({a, b, len:90, word:w});
+      linkCount[a.id]=(linkCount[a.id]||0)+1;
+      linkCount[b.id]=(linkCount[b.id]||0)+1;
+    }
+  }
+  return {total, shown:factList.length};
+}
+
+/* ---- view transform: world <-> screen ---- */
+function memView(cv){
+  const w=cv.clientWidth, h=cv.clientHeight;
+  const base=Math.min(w/memW, h/memH);
+  const scale=base*cam.z;
+  return {scale, ox:w/2-cam.x*scale, oy:h/2-cam.y*scale, w, h};
+}
+function memSelNeighbors(){
+  const set=new Set();
+  if(!memSel) return set;
+  for(const e of memEdges){
+    if(e.a===memSel) set.add(e.b);
+    if(e.b===memSel) set.add(e.a);
+  }
+  return set;
+}
+
+function memoryFrame(){
+  const cv=$("memcanvas");
+  if(!cv || !$("tab-memories").classList.contains("active")){ memAnim=null; return; }
+  if(memError){ memAnim=requestAnimationFrame(memoryFrame); return; }
+  if(memSleep && !memDrag && !memNeedsDraw){
+    memAnim=requestAnimationFrame(memoryFrame); return; // asleep + nothing new: leave the drawn map alone
+  }
+  const dpr=window.devicePixelRatio||1;
+  const v=memView(cv);
+  if(cv.width!==v.w*dpr){ cv.width=v.w*dpr; cv.height=v.h*dpr; }
+  const ctx=cv.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,v.w,v.h);
+
+  try{
+  if(!memSleep || memDrag){
+    /* fast-forward while settling: more steps per frame for small webs,
+       fewer for giant ones, so it organizes on-screen without freezing */
+    const steps=memFast ? Math.max(1, Math.min(14, Math.round(4000/Math.max(1,memNodes.length)))) : 1;
+    let energy=0;
+    for(let s=0;s<steps;s++) energy=memPhysicsStep();
+    if(energy<0.02*memNodes.length && !memDrag){ memSleep=true; memFast=false; memNeedsDraw=true; }
+  }
+
+  const searching=memSearch.length>0;
+  const neighbors=memSelNeighbors();
+  const X=n=>n.x*v.scale+v.ox, Y=n=>n.y*v.scale+v.oy;
+
+  // edges — decluttered: on big graphs, idea-links stay hidden until you
+  // select a node, search, or zoom in close. Constantly drawing hundreds of
+  // long threads is what turns a constellation into a hairball.
+  const nonHubEdges=memEdges.length - memNodes.filter(n=>n.type==="fact").length;
+  const declutter = nonHubEdges>150;
+  const hubDim = Math.max(0.025, 0.14 - memNodes.length/9000);
+  for(const e of memEdges){
+    const lit = memSel && (e.a===memSel || e.b===memSel);
+    if(!e.hub && !lit && declutter && cam.z<2.2 && !searching) continue;
+    ctx.beginPath();
+    ctx.moveTo(X(e.a), Y(e.a)); ctx.lineTo(X(e.b), Y(e.b));
+    if(lit){
+      ctx.strokeStyle=`hsla(${e.b.hue||e.a.hue} 80% 70% / 0.9)`;
+      ctx.lineWidth=2;
+    }else{
+      const dim=(memSel||searching)?0.05:(e.hub?hubDim:0.3);
+      ctx.strokeStyle=e.hub?`rgba(138,151,168,${dim})`:`hsla(${e.b.hue} 70% 65% / ${dim+0.1})`;
+      ctx.lineWidth=e.hub?1:1.3;
+    }
+    ctx.stroke();
+  }
+  // nodes
+  for(const n of memNodes){
+    const matched=searching && memMatches.has(n);
+    const lit = n===memSel || neighbors.has(n) || matched;
+    const faded=(memSel||searching) && !lit;
+    ctx.beginPath();
+    ctx.arc(X(n), Y(n), n.r*Math.max(0.8,Math.min(cam.z,2))*(n===memSel?1.6:1), 0, 6.283);
+    if(n.type==="topic"){
+      ctx.fillStyle=`hsla(${n.hue} 70% 60% / ${faded?0.25:1})`;
+      if(!faded){ ctx.shadowColor=`hsl(${n.hue} 70% 60%)`; ctx.shadowBlur=14; }
+      ctx.fill(); ctx.shadowBlur=0;
+      ctx.fillStyle=`rgba(232,238,245,${faded?0.35:0.9})`;
+      ctx.font="12px 'Space Grotesk', sans-serif"; ctx.textAlign="center";
+      ctx.fillText(n.display, Math.max(46,Math.min(v.w-46,X(n))), Math.max(14,Y(n)-n.r-6));
+    }else{
+      ctx.fillStyle = matched ? "#FFFFFF" : `hsla(${n.hue} 65% ${lit?75:62}% / ${faded?0.15:0.85})`;
+      ctx.fill();
+      if(matched){ ctx.strokeStyle="#FFF"; ctx.lineWidth=1.5; ctx.stroke(); }
+      // when zoomed in, show what each memory is
+      if(cam.z>=2.4 && !faded){
+        ctx.fillStyle="rgba(232,238,245,0.75)";
+        ctx.font="10px 'Space Grotesk', sans-serif"; ctx.textAlign="center";
+        const short=n.label.length>34 ? n.label.slice(0,32)+"…" : n.label;
+        ctx.fillText(short, X(n), Y(n)-n.r-4);
+      }
+    }
+  }
+  if(memSleep && !memDrag) memNeedsDraw=false;
+  }catch(err){
+    memError=(err&&err.message)||String(err);
+    const det=document.getElementById("memdetail");
+    if(det&&det.firstChild) det.firstChild.textContent="⚠️ Memory map hit an error: "+memError+" — tell Claude this message!";
+  }
+  memAnim=requestAnimationFrame(memoryFrame);
+}
+
+function memNodeAt(px,py){
+  const cv=$("memcanvas");
+  const v=memView(cv);
+  const wx=(px-v.ox)/v.scale, wy=(py-v.oy)/v.scale;
+  let hit=null, hd=1e9;
+  for(const n of memNodes){
+    const dx=n.x-wx, dy=n.y-wy, d=dx*dx+dy*dy;
+    const hitR=(n.r+10)/Math.min(1.4, Math.max(0.5,cam.z)); // finger-sized at any zoom
+    if(d<hitR*hitR && d<hd){hd=d; hit=n;}
+  }
+  return hit;
+}
+
+function memShowDetail(){
+  const det=$("memdetail"), btn=$("memforget");
+  if(!memSel){
+    det.firstChild.textContent=`🕸️ ${memNodes.filter(n=>n.type==="fact").length} memories mapped. Tap a dot to read it; pinch/scroll to zoom.`;
+    btn.style.display="none";
+    return;
+  }
+  if(memSel.type==="topic"){
+    det.firstChild.textContent=`📂 Topic "${memSel.label}" — ${memSel.count} memories, lit up around it.`;
+    btn.style.display="none";
+  }else{
+    const a=brain[memSel.topic] ? brain[memSel.topic][memSel.label] : null;
+    det.firstChild.textContent=`💭 "${memSel.label}" → ${a || "(memory not found)"}`;
+    btn.style.display="inline-block";
+  }
+}
+function memRunSearch(q){
+  memNeedsDraw=true;
+  memSearch=clean(q); memMatches=new Set(); memSel=null;
+  if(!memSearch){ memShowDetail(); return; }
+  const qwords=keywords(memSearch);
+  for(const n of memNodes){
+    if(n.type!=="fact") continue;
+    const matched = n.label.includes(memSearch) ||
+      (qwords.length && n.kws && qwords.every(qw=>n.kws.some(kw=>wordsMatch(qw,kw))));
+    if(matched) memMatches.add(n);
+  }
+  const det=$("memdetail");
+  det.firstChild.textContent = memMatches.size
+    ? `🔎 ${memMatches.size} memories match "${memSearch}" — glowing white. Tap one to read it.`
+    : `🔎 No memories match "${memSearch}" yet. Teach Nova about it!`;
+  $("memforget").style.display="none";
+  if(memMatches.size){ // fly to the matches
+    let sx=0, sy=0;
+    for(const n of memMatches){ sx+=n.x; sy+=n.y; }
+    cam.x=sx/memMatches.size; cam.y=sy/memMatches.size;
+    if(cam.z<1.8) cam.z=1.8;
+  }
+}
+let memFast=false, memNeedsDraw=true, memError=null;
+function renderMemories(){
+  try{
+    memError=null;
+    buildMemoryGraph();
+    memSleep=false; memFast=true; memNeedsDraw=true;   // settle on-screen, never freeze the tab
+    $("memsearch").value=""; memSearch="";
+    memShowDetail();
+  }catch(err){
+    memError=(err&&err.message)||String(err);
+    $("memdetail").firstChild.textContent="⚠️ Memory map hit an error: "+memError+" — tell Claude this message!";
+  }
+  $("memdetail").style.display="block";
+  if(!memAnim) memAnim=requestAnimationFrame(memoryFrame);
+}
+
+(function(){
+  const cv=document.getElementById("memcanvas");
+  let downAt=null;
+  const pos=e=>{
+    const r=cv.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return {x:t.clientX-r.left, y:t.clientY-r.top};
+  };
+  const pinchDist=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  const down=e=>{
+    memNeedsDraw=true;
+    if(e.touches && e.touches.length===2){ memPinch={d:pinchDist(e), z:cam.z}; memDrag=null; memPanning=null; e.preventDefault(); return; }
+    const p=pos(e);
+    memDrag=memNodeAt(p.x,p.y); downAt=p;
+    if(memDrag){ memSleep=false; }
+    else memPanning={px:p.x, py:p.y, cx:cam.x, cy:cam.y};
+    e.preventDefault();
+  };
+  const move=e=>{
+    memNeedsDraw=true;
+    if(memPinch && e.touches && e.touches.length===2){
+      cam.z=Math.max(0.5, Math.min(8, memPinch.z*pinchDist(e)/memPinch.d));
+      e.preventDefault(); return;
+    }
+    const p=pos(e);
+    if(memDrag){
+      e.preventDefault();
+      const v=memView(cv);
+      memDrag.x=(p.x-v.ox)/v.scale; memDrag.y=(p.y-v.oy)/v.scale;
+    }else if(memPanning){
+      e.preventDefault();
+      const v=memView(cv);
+      cam.x=memPanning.cx-(p.x-memPanning.px)/v.scale;
+      cam.y=memPanning.cy-(p.y-memPanning.py)/v.scale;
+    }
+  };
+  const up=e=>{
+    if(memPinch){ if(!e.touches || e.touches.length<2) memPinch=null; return; }
+    if(downAt){
+      const r=cv.getBoundingClientRect();
+      const t=e.changedTouches?e.changedTouches[0]:e;
+      const p={x:t.clientX-r.left, y:t.clientY-r.top};
+      if(Math.hypot(p.x-downAt.x, p.y-downAt.y)<8){ // a tap
+        memSel=memDrag||null;
+        memNeedsDraw=true;
+        memShowDetail();
+      }
+    }
+    memDrag=null; memPanning=null; downAt=null;
+  };
+  cv.addEventListener("mousedown",down); cv.addEventListener("mousemove",move); window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:false}); cv.addEventListener("touchmove",move,{passive:false}); cv.addEventListener("touchend",up);
+  cv.addEventListener("wheel",e=>{
+    e.preventDefault(); memNeedsDraw=true;
+    cam.z=Math.max(0.5, Math.min(8, cam.z*(e.deltaY<0?1.15:0.87)));
+  },{passive:false});
+  cv.addEventListener("dblclick",()=>{ cam={x:memW/2, y:memH/2, z:1}; memSel=null; memNeedsDraw=true; memShowDetail(); });
+})();
+
+/* ---------- 🧠 MIXTURE OF EXPERTS ----------
+   Nova is secretly a COUNCIL: one specialist per topic (capped so
+   the council stays at 12), plus three built-ins — Chatter for
+   small talk, Dreamer for imagination, Scout for internet lookups.
+   A ROUTER reads each message and decides which expert answers.
+   This is a miniature of the real "Mixture of Experts" design
+   inside large AI models.                                        */
+function hashHue(name){
+  let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  return h%360;
+}
+function expertVoice(key){
+  /* each expert gets its own deterministic voice: same expert,
+     same voice, every session */
+  let h=0; for(let i=0;i<key.length;i++) h=(h*33+key.charCodeAt(i))>>>0;
+  return {pitch:0.75+(h%55)/100, rate:0.93+((h>>4)%14)/100};
+}
+function expertName(key, fallbackName, fallbackEmoji){
+  const o=(memory.expertNames||{})[key]||{};
+  return {name:o.name||fallbackName, emoji:o.emoji||fallbackEmoji};
+}
+function expertsList(){
+  /* THE COUNCIL: 12 skill agents. Each does a different JOB —
+     routed by what you're asking for, not what it's about. */
+  const totalFacts=Object.keys(brain).reduce((s,t)=>s+Object.keys(brain[t]).length,0);
+  const codeTopics=Object.keys(brain).filter(t=>/cod|program|python|javascript|comput|software/.test(t));
+  const codeFacts=codeTopics.reduce((s,t)=>s+Object.keys(brain[t]).length,0);
+  const defs=[
+    ["chat","Chat","💬",190,"Small talk and banter — keeps you company"],
+    ["recall","Recall","🧠",210,`Answers questions from the brain — ${totalFacts} facts`],
+    ["code","Code","💻",120,`CONSTRUCTS programs from patterns${codeFacts?`, answers from ${codeFacts} facts`:""} — "write a python loop 1 to 10"`],
+    ["write","Write","✍️",330,'Composes poems & stories from Nova\'s reading — try "write a poem about space"'],
+    ["dream","Dream","✨",280,"Freeform imagination — the ✨ button and musings"],
+    ["words","Words","🏛️",45,"Breaks words into Greek/Latin roots for meanings"],
+    ["scout","Scout","🌐",140,"Internet lookups and deep studies"],
+    ["teacher","Teacher","🎓",25,'Runs quizzes — say "quiz me" right in chat'],
+    ["math","Math","🧮",60,'Calculates — try "what is 23*7+5"'],
+    ["sorter","Sorter","🔮",255,'A real neural network that classifies — "what topic is …"'],
+    ["summarizer","Summarizer","📖",170,'Extracts key sentences — "summarize <text>"'],
+    ["analyst","Analyst","📊",5,'Reports Nova\'s stats — ask "how smart are you"'],
+  ];
+  return defs.map(([key,name,emoji,hue,desc])=>{
+    const n=expertName(key,name,emoji);
+    return {key, ...n, hue, desc};
+  });
+}
+function getExpert(key){ return expertsList().find(e=>e.key===key); }
+
+/* ---------- 🎯 AGENT OWNERSHIP: which topics YOU assigned to which agent ----------
+   memory.agentTopics = { code:["python","javascript"], words:["words"], ... }
+   A user assignment always wins over the automatic regex/guess fallback. */
+function agentTopicsOf(key){ return (memory.agentTopics&&memory.agentTopics[key])||[]; }
+function ownerOfTopic(topic){
+  if(!memory.agentTopics) return null;
+  for(const k in memory.agentTopics) if(memory.agentTopics[k].includes(topic)) return k;
+  return null;
+}
+function assignTopicToAgent(topic, key){
+  memory.agentTopics=memory.agentTopics||{};
+  for(const k in memory.agentTopics) memory.agentTopics[k]=memory.agentTopics[k].filter(t=>t!==topic);
+  memory.agentTopics[key]=memory.agentTopics[key]||[];
+  if(!memory.agentTopics[key].includes(topic)) memory.agentTopics[key].push(topic);
+  saveAll();
+}
+function unassignTopic(topic){
+  if(!memory.agentTopics) return;
+  for(const k in memory.agentTopics) memory.agentTopics[k]=memory.agentTopics[k].filter(t=>t!==topic);
+  saveAll();
+}
+function expertForTopic(topic){
+  const owner=ownerOfTopic(topic);
+  if(owner) return getExpert(owner);
+  return /cod|program|python|javascript|comput|software/.test(topic) ? getExpert("code") : getExpert("recall");
+}
+function routeExpert(text){
+  const c=clean(text);
+  // check YOUR explicit assignments first, via the topic the neural net/classifier guesses
+  const guessed=guessTopic(text);
+  if(guessed){ const owner=ownerOfTopic(guessed); if(owner) return getExpert(owner); }
+  if(/\b(code|coding|program|python|javascript|function|loop|bug|variable|software)\b/.test(c)) return getExpert("code");
+  if(guessed==="words" || (agentTopicsOf("words").includes(guessed))) return getExpert("words");
+  if(/^(what|who|how|why|when|where|which|is|are|do|does|can|will|did)\b/.test(c) || text.includes("?")) return getExpert("recall");
+  return getExpert("chat");
+}
+function tagOf(e){ return e ? e.emoji+" "+e.name : null; }
+
+function renderExperts(){
+  const list=$("expertlist"); if(!list) return;
+  list.innerHTML="";
+  for(const e of expertsList()){
+    const d=document.createElement("div");
+    d.className="p-card";
+    d.innerHTML=`<span class="p-face"></span><span><div class="p-name"></div><div class="p-desc"></div></span>`;
+    d.querySelector(".p-face").textContent=e.emoji;
+    d.querySelector(".p-name").textContent=e.name;
+    const st=(memory.expertStats||{})[e.key];
+    d.querySelector(".p-desc").textContent = e.desc + (st&&st.answered?` · ${st.answered} answers`:"");
+    d.querySelector(".p-face").style.filter=`drop-shadow(0 0 4px hsl(${e.hue} 70% 60%))`;
+    d.addEventListener("click",()=>{
+      const nn=prompt("Rename this expert:", e.name);
+      if(nn===null) return;
+      const ne=prompt("Pick an emoji for it:", e.emoji)||e.emoji;
+      memory.expertNames=memory.expertNames||{};
+      memory.expertNames[e.key]={name:(nn.trim()||e.name).slice(0,20), emoji:ne.slice(0,4)};
+      saveAll(); renderExperts();
+    });
+    list.appendChild(d);
+  }
+}
+
+/* ---------- 🏛️ ETYMOLOGIST: breaking words into Greek/Latin roots ----------
+   Nova can DECOMPOSE big words into ancient roots it knows and
+   construct the meaning: astrobiology = astro (star) + bio (life)
+   + -logy (study of) → "the study of life among the stars".
+   This is real word-understanding — meaning from parts, not
+   memorization. */
+const ROOTS={
+  // Greek & Latin prefixes
+  a:"not/without", anti:"against", auto:"self", bi:"two", circum:"around",
+  co:"together", contra:"against", de:"down/away", di:"two", dis:"apart",
+  en:"in", epi:"upon", ex:"out", extra:"beyond", hemi:"half", hyper:"over/excessive",
+  hypo:"under", inter:"between", intra:"within", macro:"large", mal:"bad",
+  mega:"huge", micro:"small", mid:"middle", mis:"wrong", mono:"one",
+  multi:"many", neo:"new", non:"not", omni:"all", pan:"all", para:"beside",
+  peri:"around", poly:"many", post:"after", pre:"before", pro:"forward",
+  proto:"first", pseudo:"false", quad:"four", re:"again", semi:"half",
+  sub:"under", super:"above", sym:"together", syn:"together", tele:"far",
+  trans:"across", tri:"three", ultra:"beyond", un:"not", uni:"one",
+  // roots
+  aqua:"water", aero:"air", agri:"field/farming", andro:"man", anima:"life/spirit",
+  anthropo:"human", arch:"chief/ruler", astro:"star", aud:"hear", bene:"good",
+  biblio:"book", bio:"life", card:"heart", cardio:"heart", carn:"flesh",
+  cede:"go/yield", cent:"hundred", chrom:"color", chron:"time", chrono:"time",
+  cogn:"know", corp:"body", cosm:"universe", cosmo:"universe", crat:"rule",
+  cred:"believe", crypt:"hidden", cycl:"circle", dem:"people", demo:"people",
+  derm:"skin", dict:"say/speak", duc:"lead", dyna:"power", eco:"home/environment",
+  ego:"self", equ:"equal", fac:"make/do", fer:"carry", fid:"faith", flex:"bend",
+  form:"shape", fract:"break", gen:"birth/origin", geo:"earth", gram:"written",
+  graph:"write/record", grat:"pleasing", gress:"walk", helio:"sun", hemo:"blood",
+  hetero:"different", homo:"same", hydro:"water", ject:"throw", jud:"judge",
+  junct:"join", kilo:"thousand", lab:"work", liber:"free", lith:"stone",
+  loc:"place", log:"word/reason", luc:"light", lun:"moon", man:"hand",
+  mand:"order", mar:"sea", mater:"mother", medi:"middle", mem:"remember",
+  ment:"mind", meter:"measure", migr:"move", mit:"send", morph:"shape/form",
+  mort:"death", mot:"move", nat:"born", nav:"ship", necro:"death", neuro:"nerve/brain",
+  noct:"night", nom:"name/law", nov:"new", ocu:"eye", ortho:"straight/correct",
+  pater:"father", path:"feeling/disease", ped:"foot/child", pel:"drive",
+  pend:"hang", phil:"love", phob:"fear", phon:"sound", photo:"light",
+  phys:"nature/body", pod:"foot", port:"carry", psych:"mind/soul", pyro:"fire",
+  rupt:"break", san:"health", sci:"know", scrib:"write", script:"written",
+  sect:"cut", sens:"feel", sol:"sun/alone", somn:"sleep", son:"sound",
+  soph:"wisdom", spec:"see/look", spect:"see/look", sphere:"ball/globe",
+  spir:"breathe", struct:"build", tact:"touch", techno:"skill/craft",
+  terr:"earth/land", terra:"earth/land", the:"god", theo:"god", therm:"heat",
+  thermo:"heat", tract:"pull", urb:"city", vac:"empty", ven:"come",
+  ver:"truth", vert:"turn", vid:"see", vis:"see", vit:"life", viv:"live",
+  voc:"voice/call", vol:"wish/will", vor:"eat", zoo:"animal",
+  // suffixes
+  able:"capable of", al:"relating to", arium:"place for", ary:"relating to",
+  ate:"to make", cide:"killing", cracy:"rule by", ectomy:"surgical removal",
+  er:"one who", fy:"to make", gamy:"marriage", ic:"relating to",
+  ism:"belief/practice", ist:"one who", itis:"inflammation", ize:"to make",
+  less:"without", logy:"study of", lysis:"breaking down", mania:"madness for",
+  ment:"result of", naut:"sailor/traveler", nomy:"system of laws",
+  oid:"resembling", ology:"study of", or:"one who", osis:"condition",
+  ous:"full of", pathy:"feeling/disease", phage:"eater", phile:"lover of",
+  philia:"love of", phobia:"fear of", phone:"sound", scope:"instrument for viewing",
+  ship:"state of", tion:"act of", tomy:"cutting", ward:"direction"
+};
+const ROOT_KEYS=Object.keys(ROOTS).sort((a,b)=>b.length-a.length);
+
+function decomposeWord(word){
+  const w=clean(word).replace(/[^a-z]/g,"");
+  if(w.length<6) return null;
+  /* greedy longest-root matching left to right, allowing single
+     connector letters (o, i, a, e, s) between parts */
+  let best=null;
+  function walk(i, parts, covered){
+    if(i>=w.length-1){
+      if(parts.length>=2 && covered/w.length>=0.65){
+        if(!best || covered>best.covered) best={parts:[...parts], covered};
+      }
+      return;
+    }
+    let advanced=false;
+    for(const r of ROOT_KEYS){
+      if(r.length<2 && parts.length===0) continue; // no 1-letter starts
+      if(w.startsWith(r, i)){
+        parts.push(r);
+        walk(i+r.length, parts, covered+r.length);
+        parts.pop();
+        advanced=true;
+        if(best && best.covered===w.length) return; // perfect already
+      }
+    }
+    if("oiaes".includes(w[i])) walk(i+1, parts, covered); // connector letter
+    else if(!advanced && parts.length) walk(i+1, parts, covered); // small unknown gap
+  }
+  walk(0, [], 0);
+  if(!best) return null;
+  return best.parts.map(p=>({part:p, meaning:ROOTS[p]}));
+}
+function buildMeaning(parts){
+  const last=parts[parts.length-1].part;
+  const restM=parts.slice(0,-1).map(p=>p.meaning.split("/")[0]);
+  const rest=restM.join(" and ")||"it";
+  const T={logy:"the study of", ology:"the study of", phobia:"fear of",
+           philia:"love of", phile:"a lover of", cide:"the killing of",
+           scope:"an instrument for viewing", meter:"a device measuring",
+           graph:"a recording of", naut:"a traveler of", itis:"inflammation of",
+           cracy:"rule by", mania:"a madness for", phage:"an eater of",
+           vor:"an eater of", ectomy:"surgical removal of", tomy:"the cutting of"};
+  if(T[last]) return `${T[last]} ${rest}`;
+  return "something relating to "+parts.map(p=>p.meaning.split("/")[0]).join(" + ");
+}
+function etymologyAnswer(word){
+  const parts=decomposeWord(word);
+  if(!parts) return null;
+  const breakdown=parts.map(p=>`${p.part} (${p.meaning})`).join(" + ");
+  const meaning=buildMeaning(parts);
+  return {word:clean(word).replace(/[^a-z]/g,""), breakdown, meaning,
+          text:`🏛️ Let me break "${word}" into its ancient roots:\n\n${breakdown}\n\n→ So it likely means: ${meaning}.`};
+}
+
+/* ---------- 🧠 A REAL NEURAL NETWORK (now with depth) ----------
+   Architecture: hashed bag-of-words (256 inputs) → hidden layer 1
+   (tanh) → hidden layer 2 (tanh) → softmax over topics. Trained by
+   gradient descent with dropout. The network GROWS with the brain:
+   more facts → more neurons → more epochs, and training runs in the
+   background in small slices so the app never freezes.           */
+const NN={dim:512, h1:16, h2:8, W1:null,b1:null, W2:null,b2:null, W3:null,b3:null,
+          classes:[], trained:0, ready:false, training:false, sig:"", acc:0, params:0};
+function nnFeaturize(text, dropout){
+  const v=new Float32Array(NN.dim);
+  const toks=Array.isArray(text)?text:keywords(text);
+  for(const w of toks){
+    if(dropout && Math.random()<dropout) continue;
+    let h=0; for(let i=0;i<w.length;i++) h=(h*131+w.charCodeAt(i))>>>0;
+    v[h%NN.dim]+=1;
+  }
+  let n=0; for(let i=0;i<NN.dim;i++) n+=v[i]*v[i];
+  n=Math.sqrt(n)||1;
+  for(let i=0;i<NN.dim;i++) v[i]/=n;
+  return v;
+}
+function nnInit(classes, facts){
+  NN.classes=classes;
+  const mode=(memory.netSize||"auto");
+  if(mode==="max"){ NN.h1=1024; NN.h2=512; NN.dim=4096; }        // 🔥 ~4.7M parameters
+  else if(mode==="large"){ NN.h1=512; NN.h2=256; NN.dim=2048; }  // ~1.2M parameters
+  else{ // auto: the brain grows with knowledge
+    NN.h1 = facts<60?64 : facts<300?128 : facts<1000?256 : 512;
+    NN.h2 = NN.h1/2;
+    NN.dim = NN.h1>=512?2048 : NN.h1>=256?1024 : 512;
+  }
+  const mat=(rows,cols)=>Array.from({length:rows},()=>Float32Array.from({length:cols},()=>(Math.random()-0.5)*0.4));
+  NN.W1=mat(NN.h1,NN.dim); NN.b1=new Float32Array(NN.h1);
+  NN.W2=mat(NN.h2,NN.h1);  NN.b2=new Float32Array(NN.h2);
+  NN.W3=mat(classes.length,NN.h2); NN.b3=new Float32Array(classes.length);
+  NN.params=NN.h1*NN.dim+NN.h1 + NN.h2*NN.h1+NN.h2 + classes.length*NN.h2+classes.length;
+}
+function nnForward(x){
+  const a1=new Float32Array(NN.h1);
+  for(let j=0;j<NN.h1;j++){ let s=NN.b1[j]; for(let i=0;i<NN.dim;i++) if(x[i]) s+=NN.W1[j][i]*x[i]; a1[j]=Math.tanh(s); }
+  const a2=new Float32Array(NN.h2);
+  for(let k=0;k<NN.h2;k++){ let s=NN.b2[k]; for(let j=0;j<NN.h1;j++) s+=NN.W2[k][j]*a1[j]; a2[k]=Math.tanh(s); }
+  const z=new Float32Array(NN.classes.length); let mx=-1e9;
+  for(let c=0;c<z.length;c++){ let s=NN.b3[c]; for(let k=0;k<NN.h2;k++) s+=NN.W3[c][k]*a2[k]; z[c]=s; if(s>mx) mx=s; }
+  let sum=0; const p=new Float32Array(z.length);
+  for(let c=0;c<z.length;c++){ p[c]=Math.exp(z[c]-mx); sum+=p[c]; }
+  for(let c=0;c<z.length;c++) p[c]/=sum;
+  return {a1,a2,p};
+}
+function nnStep(x, target, lr){
+  const {a1,a2,p}=nnForward(x);
+  const dz=Float32Array.from(p); dz[target]-=1;
+  const da2=new Float32Array(NN.h2);
+  for(let c=0;c<dz.length;c++){
+    for(let k=0;k<NN.h2;k++){ da2[k]+=NN.W3[c][k]*dz[c]; NN.W3[c][k]-=lr*dz[c]*a2[k]; }
+    NN.b3[c]-=lr*dz[c];
+  }
+  const da1=new Float32Array(NN.h1);
+  for(let k=0;k<NN.h2;k++){
+    const g=da2[k]*(1-a2[k]*a2[k]);
+    for(let j=0;j<NN.h1;j++){ da1[j]+=NN.W2[k][j]*g; NN.W2[k][j]-=lr*g*a1[j]; }
+    NN.b2[k]-=lr*g;
+  }
+  for(let j=0;j<NN.h1;j++){
+    const g=da1[j]*(1-a1[j]*a1[j]);
+    for(let i=0;i<NN.dim;i++) if(x[i]) NN.W1[j][i]-=lr*g*x[i];
+    NN.b1[j]-=lr*g;
+  }
+}
+function nnSignature(){
+  const topics=Object.keys(brain).filter(t=>Object.keys(brain[t]).length>=2);
+  let total=0; for(const t of topics) total+=Object.keys(brain[t]).length;
+  return {topics, total, sig:topics.join(",")+":"+total};
+}
+function nnScheduleRetrain(){
+  const {topics,total,sig}=nnSignature();
+  if(sig===NN.sig || NN.training) return;
+  if(topics.length<2 || total<10){ NN.sig=sig; NN.ready=false; return; }
+  NN.training=true; NN.sig=sig;
+  nnInit(topics,total);
+  const samples=[];
+  for(const t of topics){
+    const ti=topics.indexOf(t);
+    for(const q of Object.keys(brain[t]).slice(0,200))
+      samples.push([keywords(q+" "+brain[t][q].slice(0,120)), ti]);
+  }
+  const epochs=Math.max(10, Math.min(28, Math.round(60000/samples.length)));
+  /* bigger networks cost more per step, so each background slice does
+     fewer steps — the app stays smooth no matter the size */
+  const stepCost=12*NN.h1 + NN.h1*NN.h2 + NN.h2*NN.classes.length;
+  const stepsPerSlice=Math.max(4, Math.min(2000, Math.round(3500000/stepCost)));
+  NN.progress={ep:0, epochs, pct:0};
+  let ep=0, idx=0;
+  const shuffle=()=>{ for(let i=samples.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [samples[i],samples[j]]=[samples[j],samples[i]]; } };
+  shuffle();
+  function slice(){
+    const lr=0.15*(1-ep/epochs)+0.02;
+    let budget=stepsPerSlice;
+    while(budget-->0){
+      if(idx>=samples.length){ idx=0; ep++; shuffle(); if(ep>=epochs) break; }
+      const [toks,y]=samples[idx++];
+      nnStep(nnFeaturize(toks,0.3), y, lr);
+    }
+    if(ep<epochs){
+      NN.progress={ep, epochs, pct:Math.round((ep+idx/samples.length)/epochs*100)};
+      setTimeout(slice, 12); return;
+    }
+    // done: grade itself on (a sample of) its own training facts
+    const graded=samples.length>300 ? samples.filter(()=>Math.random()<300/samples.length) : samples;
+    let hit=0;
+    for(const [toks,y] of graded){
+      const {p}=nnForward(nnFeaturize(toks));
+      let b=0; for(let c=1;c<p.length;c++) if(p[c]>p[b]) b=c;
+      if(b===y) hit++;
+    }
+    NN.acc=Math.round(hit/Math.max(1,graded.length)*100);
+    NN.trained=samples.length; NN.ready=true; NN.training=false; NN.progress=null;
+    if(NN.params>=1000000) achieve("megamind","🏆 MEGAMIND — Nova's neural network passed a MILLION parameters!");
+    bubble("sys",`🧠 Neural network retrained: ${NN.params.toLocaleString()} parameters (${NN.h1}+${NN.h2} neurons, ${NN.dim} inputs), ${NN.classes.length} topics, ${NN.acc}% self-test accuracy on ${NN.trained} facts.`);
+  }
+  setTimeout(slice, 12);
+}
+function nnPredict(text){
+  nnScheduleRetrain();          // kicks off background training if stale
+  if(!NN.ready) return null;    // TF-IDF covers for it meanwhile
+  const {p}=nnForward(nnFeaturize(text));
+  let best=0; for(let k=1;k<p.length;k++) if(p[k]>p[best]) best=k;
+  if(p[best]<0.45) return null;
+  return {topic:NN.classes[best], conf:Math.round(p[best]*100)};
+}
+function nnLearnOne(text, topic){
+  if(!NN.ready || !NN.classes.includes(topic)) return;
+  const x=nnFeaturize(text), y=NN.classes.indexOf(topic);
+  for(let i=0;i<4;i++) nnStep(x,y,0.04);
+}
+
+/* ---------- 💻 CODE BUILDER: constructs real programs ----------
+   Not lookup — construction. Nova knows code PATTERNS and fills
+   in the slots from your request. */
+/* ---------- 🧠💻 NN-GUIDED SNIPPET RETRIEVAL ----------
+   Before falling back to fixed templates, Code checks whether Nova
+   has actually READ a real code example matching your request — a
+   fact taught by you, bulk-pasted, or pulled from a Stack Exchange
+   study. The neural network's topic guess narrows the search to the
+   right slice of Nova's brain instead of scanning everything.      */
+function extractSnippet(answerText){
+  const m=answerText.match(/e\.g\.[,:]?\s*(.+)$/i);
+  if(!m) return null;
+  let snip=m[1].trim();
+  // trim a trailing English sentence that sometimes follows the code
+  snip=snip.split(/\.\s+[A-Z][a-z]/)[0].trim();
+  return snip.length>3 ? snip : null;
+}
+function guessLangOf(text){
+  if(/\bdef |print\(|:\s*$|elif |import /.test(text)) return "python";
+  if(/function|console\.log|=>|const |let /.test(text)) return "javascript";
+  return null;
+}
+function codeKnowledgeScope(){
+  const scoped={};
+  for(const t in brain)
+    if(agentTopicsOf("code").includes(t) || /cod|program|python|javascript|comput|software/.test(t))
+      Object.assign(scoped, brain[t]);
+  return scoped;
+}
+function findLearnedCodeSnippet(request){
+  const scope=codeKnowledgeScope();
+  if(!Object.keys(scope).length) return null;
+  // let the neural net's topic guess double-check we're really in code territory
+  const nn=nnPredict(request);
+  const res=findAnswer(request, scope);
+  if(!res) return null;
+  const snippet=extractSnippet(res.a);
+  if(!snippet) return null;
+  return {question:res.q, answer:res.a, snippet, lang:guessLangOf(res.a)||guessLangOf(snippet), nn};
+}
+
+function codeBuild(req){
+  const c=clean(req);
+  const js=/\b(javascript|js)\b/.test(c);
+  const nums=(c.match(/-?\d+/g)||[]).map(Number);
+  const quoted=(req.match(/["'“”](.+?)["'“”]/)||[])[1];
+  const py=(code,why)=>({lang:js?"javascript":"python", code, why});
+
+  // countdown / count / loop between two numbers
+  if(/\b(loop|count|repeat|numbers?)\b/.test(c) && nums.length>=2){
+    const [a,b]=nums;
+    if(js) return py(a<=b?`for (let i = ${a}; i <= ${b}; i++) {\n  console.log(i);\n}`:`for (let i = ${a}; i >= ${b}; i--) {\n  console.log(i);\n}`, `a loop from ${a} to ${b}`);
+    return py(a<=b?`for i in range(${a}, ${b+1}):\n    print(i)`:`for i in range(${a}, ${b-1}, -1):\n    print(i)`, `a loop from ${a} to ${b}`);
+  }
+  // even/odd up to N
+  const eo=c.match(/\b(even|odd)\b/);
+  if(eo && nums.length>=1){
+    const n=nums[nums.length-1], rem=eo[1]==="even"?0:1;
+    if(js) return py(`for (let i = 1; i <= ${n}; i++) {\n  if (i % 2 === ${rem}) console.log(i);\n}`, `${eo[1]} numbers up to ${n}`);
+    return py(`for i in range(1, ${n+1}):\n    if i % 2 == ${rem}:\n        print(i)`, `${eo[1]} numbers up to ${n}`);
+  }
+  // times table
+  if(/times table|multiplication table/.test(c) && nums.length>=1){
+    const n=nums[0];
+    if(js) return py(`for (let i = 1; i <= 10; i++) {\n  console.log(\`${n} x \${i} = \${${n} * i}\`);\n}`, `the ${n} times table`);
+    return py(`for i in range(1, 11):\n    print(f"${n} x {i} = {${n} * i}")`, `the ${n} times table`);
+  }
+  // function doing arithmetic
+  const op=c.match(/\b(add|sum|subtract|multiply|multiplie|divide)s?\b/);
+  if(/\b(function|def)\b/.test(c) && op){
+    const sym={add:"+",sum:"+",subtract:"-",multiply:"*",multiplie:"*",divide:"/"}[op[1]];
+    const name={"+":"add","-":"subtract","*":"multiply","/":"divide"}[sym];
+    if(js) return py(`function ${name}(a, b) {\n  return a ${sym} b;\n}\n\nconsole.log(${name}(6, 3));`, `a function that ${name}s two numbers`);
+    return py(`def ${name}(a, b):\n    return a ${sym} b\n\nprint(${name}(6, 3))`, `a function that ${name}s two numbers`);
+  }
+  // greeting function / print
+  if(/\b(print|say|display|output|greet|hello)/.test(c)){
+    const msg=quoted||(/greet|hello/.test(c)?"Hello, world!":null);
+    if(msg){
+      if(js) return py(`console.log("${msg}");`, `printing a message`);
+      return py(`print("${msg}")`, `printing a message`);
+    }
+  }
+  // ask the user for input
+  if(/\b(ask|input|user types?)\b/.test(c)){
+    if(js) return py(`const name = prompt("What is your name?");\nconsole.log(\`Hello, \${name}!\`);`, `asking the user a question`);
+    return py(`name = input("What is your name? ")\nprint(f"Hello, {name}!")`, `asking the user a question`);
+  }
+  // a list of things
+  const lm=req.match(/list (?:of|with|containing) (.+)/i);
+  if(lm){
+    const items=lm[1].split(/,| and /).map(s=>clean(s)).filter(Boolean).slice(0,8);
+    if(items.length>=2){
+      const lit=items.map(i=>`"${i}"`).join(", ");
+      if(js) return py(`const items = [${lit}];\n\nfor (const item of items) {\n  console.log(item);\n}`, `a list you can loop over`);
+      return py(`items = [${lit}]\n\nfor item in items:\n    print(item)`, `a list you can loop over`);
+    }
+  }
+  return null;
+}
+
+/* ---------- ✍️ GRAMMAR SPEECH: composing from intact clauses ----
+   Instead of gluing random words (Markov), Nova lifts whole
+   subject+predicate clauses from its reading and sets them into
+   sentence frames — far more coherent, still fully original.   */
+function clauseBank(seed){
+  const bank=[];
+  const seeds=seed?keywords(seed):null;
+  for(const t in brain) for(const q in brain[t]){
+    const sents=brain[t][q].match(/(?:[^.!?]|[.!?](?=\d))+[.!?]+(?=\s+["A-Z]|\s*$)/g)||[brain[t][q]];
+    for(const s of sents){
+      const m=s.trim().match(/^(?:The |A |An )?([A-Z][A-Za-z\d\- ]{2,28}?) (is|are|was|were|has|have|can|contains|orbits|uses|makes|helps|means) (.{6,90}?)[.!?]?$/);
+      if(!m) continue;
+      if(seeds && !seeds.some(w=>wordsMatch(w, stem(m[1].toLowerCase().split(" ").pop())) || m[0].toLowerCase().includes(w))) continue;
+      bank.push({subj:m[1], pred:m[2]+" "+m[3].replace(/\s+/g," ")});
+    }
+  }
+  return bank;
+}
+function grammarSpeak(seed){
+  let bank=clauseBank(seed);
+  if(bank.length<1 && seed) bank=clauseBank(null);
+  if(bank.length<2) return null;
+  const pickC=()=>bank.splice((Math.random()*bank.length)|0,1)[0];
+  const a=pickC(), b=pickC();
+  const frames=[
+    ()=>`Did you know that ${a.subj.toLowerCase()==="it"?a.subj:a.subj[0].toLowerCase()+a.subj.slice(1)} ${a.pred}? And here's the wild part — ${b.subj[0].toLowerCase()+b.subj.slice(1)} ${b.pred}.`,
+    ()=>`I've been thinking… ${a.subj} ${a.pred}. Meanwhile, ${b.subj[0].toLowerCase()+b.subj.slice(1)} ${b.pred}. Everything connects!`,
+    ()=>`Here's what I know: ${a.subj} ${a.pred} — and ${b.subj[0].toLowerCase()+b.subj.slice(1)} ${b.pred}.`,
+    ()=>`${a.subj} ${a.pred}. Which makes me wonder about ${b.subj[0].toLowerCase()+b.subj.slice(1)}, which ${b.pred}.`,
+  ];
+  return frames[(Math.random()*frames.length)|0]();
+}
+
+/* ---------- 🧮 ✍️ 📖 AGENT SKILLS ---------- */
+/* Math agent: a real expression evaluator (shunting-yard — no eval!) */
+function mathEval(expr){
+  const tokens=expr.match(/\d+\.?\d*|[+\-*/%^()]/g);
+  if(!tokens || !tokens.some(t=>/[+\-*/%^]/.test(t)) || !tokens.some(t=>/\d/.test(t))) return null;
+  const prec={"+":1,"-":1,"*":2,"/":2,"%":2,"^":3};
+  const out=[], ops=[];
+  let prev=null;
+  for(let t of tokens){
+    if(/\d/.test(t)) out.push(parseFloat(t));
+    else if(t==="(") ops.push(t);
+    else if(t===")"){
+      while(ops.length && ops[ops.length-1]!=="(") out.push(ops.pop());
+      if(!ops.length) return null;
+      ops.pop();
+    }else{
+      if(t==="-" && (prev===null || (/[+\-*/%^(]/.test(prev)))){ out.push(0); } // unary minus
+      while(ops.length && prec[ops[ops.length-1]]>=prec[t] && ops[ops.length-1]!=="(") out.push(ops.pop());
+      ops.push(t);
+    }
+    prev=t;
+  }
+  while(ops.length){ const o=ops.pop(); if(o==="(") return null; out.push(o); }
+  const st=[];
+  for(const t of out){
+    if(typeof t==="number") st.push(t);
+    else{
+      const b=st.pop(), a=st.pop();
+      if(a===undefined||b===undefined) return null;
+      st.push(t==="+"?a+b : t==="-"?a-b : t==="*"?a*b : t==="/"?a/b : t==="%"?a%b : Math.pow(a,b));
+    }
+  }
+  if(st.length!==1 || !isFinite(st[0])) return null;
+  return Math.round(st[0]*1e6)/1e6;
+}
+/* Write agent: composes from Nova's reading (never your words) */
+function writePiece(kind, seed){
+  // poems read best when built from intact clauses
+  if(/poem|haiku|verse|song/.test(kind)){
+    const bank=clauseBank(seed).concat(seed?clauseBank(null).slice(0,4):[]);
+    if(bank.length>=2){
+      const poem=[];
+      for(let i=0;i<Math.min(4,bank.length);i++){
+        const c=bank.splice((Math.random()*bank.length)|0,1)[0];
+        poem.push(c.subj+",", "  "+c.pred+".");
+      }
+      return poem.join("\n");
+    }
+  }
+  const lines=[];
+  for(let i=0;i<3;i++){
+    const g=imagine(seed||"", !!seed);
+    if(g) lines.push(g.text); else break;
+  }
+  if(!lines.length){ const g=imagine("",false); if(g) lines.push(g.text); }
+  if(!lines.length) return null;
+  if(/poem|haiku|verse/.test(kind)){
+    const words=lines.join(" ").split(/\s+/).slice(0,24);
+    const poem=[];
+    for(let i=0;i<words.length;i+=5) poem.push(words.slice(i,i+5).join(" "));
+    return poem.join("\n");
+  }
+  return lines.join(" ");
+}
+/* Summarizer agent: extractive summary — keeps the 2 densest sentences */
+function summarizeText(text){
+  const sentences=text.match(/(?:[^.!?]|[.!?](?=\d))+[.!?]+(?=\s+["A-Z]|\s*$)/g)||[text];
+  if(sentences.length<3) return null;
+  const freq=Object.create(null);
+  for(const w of keywords(text)) freq[w]=(freq[w]||0)+1;
+  const scored=sentences.map((s,i)=>{
+    let sc=0; for(const w of keywords(s)) sc+=freq[w]||0;
+    return {s:s.trim(), i, sc:sc/Math.max(1,s.split(/\s+/).length)};
+  });
+  scored.sort((a,b)=>b.sc-a.sc);
+  return scored.slice(0,2).sort((a,b)=>a.i-b.i).map(x=>x.s).join(" ");
+}
+let chatQuiz=null; // Teacher agent's in-chat question
+
+/* ---------- 🧠 NET VIEW: watch a thought flow through the layers ---------- */
+function renderNet(){
+  const cv=document.getElementById("netcanvas");
+  if(!cv) return;
+  const info=document.getElementById("net-info");
+  if(info){
+    info.textContent = NN.training
+      ? `⚡ Training ${NN.params.toLocaleString()} parameters by gradient descent… epoch ${(NN.progress&&NN.progress.ep+1)||1}/${(NN.progress&&NN.progress.epochs)||"?"} · ${(NN.progress&&NN.progress.pct)||0}%`
+      : NN.ready
+      ? `${NN.params.toLocaleString()} parameters · ${NN.dim} inputs → ${NN.h1} → ${NN.h2} neurons → ${NN.classes.length} topics · ${NN.acc}% self-test accuracy on ${NN.trained} facts`
+      : "The network wakes up once Nova has 10+ facts across 2+ topics. Do a Deep Study!";
+  }
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth, h=cv.clientHeight;
+  if(cv.width!==w*dpr){ cv.width=w*dpr; cv.height=h*dpr; }
+  const ctx=cv.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  if(!NN.ready){ 
+    ctx.fillStyle="rgba(138,151,168,0.6)"; ctx.font="13px 'Space Grotesk',sans-serif"; ctx.textAlign="center";
+    ctx.fillText(NN.training?"training…":"no network yet — feed me facts!", w/2, h/2);
+    return;
+  }
+
+  // the probe: run the typed question through the real network
+  const probeEl=document.getElementById("net-probe");
+  const probeText=probeEl?probeEl.value.trim():"";
+  const toks=probeText?[...new Set(keywords(probeText))].slice(0,12):[];
+  const buckets=toks.map(wd=>{ let hh=0; for(let i=0;i<wd.length;i++) hh=(hh*131+wd.charCodeAt(i))>>>0; return hh%NN.dim; });
+  let act=null;
+  if(toks.length){
+    const x=nnFeaturize(toks);
+    act={x, ...nnForward(x)};
+  }
+
+  const X={inp:w*0.13, h1:w*0.42, h2:w*0.64, out:w*0.86};
+  const colY=(n,i,pad)=> pad + (h-2*pad)*(i+1)/(n+1);
+  /* huge layers get sampled for display — 96 stand-ins for up to 1024 */
+  const sample=(n,cap)=>{ const idx=[]; const step=Math.max(1,Math.floor(n/cap)); for(let i=0;i<n && idx.length<cap;i+=step) idx.push(i); return idx; };
+  const S1=sample(NN.h1,96), S2=sample(NN.h2,48);
+  const posH1=j=>colY(S1.length,S1.indexOf(j)>=0?S1.indexOf(j):Math.round(j/NN.h1*(S1.length-1)),14);
+  const posH2=k=>colY(S2.length,S2.indexOf(k)>=0?S2.indexOf(k):Math.round(k/NN.h2*(S2.length-1)),20);
+  const posOut=i=>colY(NN.classes.length,i,26);
+  const sgn=v=>v>=0?"79,216,235":"255,122,182"; // teal up, pink down
+
+  // edges input→h1 (only when probing: your words light their paths)
+  if(act){
+    toks.forEach((wd,t)=>{
+      const iy=colY(toks.length,t,26), b=buckets[t];
+      const ws=[];
+      for(const j of (NN.h1>96?Array.from({length:96},(x,i)=>Math.floor(i*NN.h1/96)):Array.from({length:NN.h1},(x,i)=>i))) ws.push([Math.abs(NN.W1[j][b]),j]);
+      ws.sort((a,c)=>c[0]-a[0]);
+      for(const [mag,j] of ws.slice(0,3)){
+        const v=NN.W1[j][b]*act.x[b];
+        ctx.strokeStyle=`rgba(${sgn(v)},${Math.min(0.9,Math.abs(v)*4+0.15)})`;
+        ctx.lineWidth=Math.min(2.5,Math.abs(v)*8+0.4);
+        ctx.beginPath(); ctx.moveTo(X.inp+40,iy); ctx.lineTo(X.h1,posH1(j)); ctx.stroke();
+      }
+    });
+  }
+  // h1→h2 and h2→out: strongest live signals (or strongest weights at rest)
+  for(const k of S2){
+    const ws=[];
+    for(const j of S1) ws.push([Math.abs(NN.W2[k][j]*(act?act.a1[j]:1)),j]);
+    ws.sort((a,c)=>c[0]-a[0]);
+    for(const [mag,j] of ws.slice(0,2)){
+      const v=NN.W2[k][j]*(act?act.a1[j]:0.3);
+      ctx.strokeStyle=`rgba(${sgn(v)},${Math.min(0.8,Math.abs(v)*(act?2.5:0.6)+0.06)})`;
+      ctx.lineWidth=Math.min(2,Math.abs(v)*(act?4:1)+0.3);
+      ctx.beginPath(); ctx.moveTo(X.h1,posH1(j)); ctx.lineTo(X.h2,posH2(k)); ctx.stroke();
+    }
+  }
+  for(let c=0;c<NN.classes.length;c++){
+    const ws=[];
+    for(let k=0;k<NN.h2;k++) ws.push([Math.abs(NN.W3[c][k]*(act?act.a2[k]:1)),k]);
+    ws.sort((a,b2)=>b2[0]-a[0]);
+    for(const [mag,k] of ws.slice(0,3)){
+      const v=NN.W3[c][k]*(act?act.a2[k]:0.3);
+      ctx.strokeStyle=`rgba(${sgn(v)},${Math.min(0.85,Math.abs(v)*(act?2.5:0.6)+0.06)})`;
+      ctx.lineWidth=Math.min(2.2,Math.abs(v)*(act?4:1)+0.3);
+      ctx.beginPath(); ctx.moveTo(X.h2,posH2(k)); ctx.lineTo(X.out,posOut(c)); ctx.stroke();
+    }
+  }
+
+  // input column
+  ctx.textAlign="right"; ctx.font="11px 'Space Grotesk',sans-serif";
+  if(act){
+    toks.forEach((wd,t)=>{
+      const iy=colY(toks.length,t,26);
+      ctx.fillStyle="rgba(232,238,245,0.9)"; ctx.fillText(wd, X.inp+30, iy+3);
+      ctx.beginPath(); ctx.arc(X.inp+40,iy,4,0,6.283);
+      ctx.fillStyle="#4FD8EB"; ctx.fill();
+    });
+  }else{
+    for(let i=0;i<14;i++){
+      ctx.beginPath(); ctx.arc(X.inp+40,colY(14,i,26),2.5,0,6.283);
+      ctx.fillStyle="rgba(138,151,168,0.5)"; ctx.fill();
+    }
+    ctx.fillStyle="rgba(138,151,168,0.8)";
+    ctx.fillText(NN.dim+" inputs", X.inp+30, 14);
+  }
+  // hidden neurons: brightness = how hard they're firing
+  for(const j of S1){
+    const a=act?Math.abs(act.a1[j]):0.18;
+    ctx.beginPath(); ctx.arc(X.h1,posH1(j),Math.min(3.4,140/S1.length+1),0,6.283);
+    ctx.fillStyle=`rgba(232,238,245,${0.12+a*0.85})`; ctx.fill();
+  }
+  for(const k of S2){
+    const a=act?Math.abs(act.a2[k]):0.18;
+    ctx.beginPath(); ctx.arc(X.h2,posH2(k),Math.min(4,140/S2.length+1.4),0,6.283);
+    ctx.fillStyle=`rgba(232,238,245,${0.12+a*0.85})`; ctx.fill();
+  }
+  if(NN.h1>S1.length){
+    ctx.fillStyle="rgba(138,151,168,0.8)"; ctx.textAlign="center"; ctx.font="10px 'Space Grotesk',sans-serif";
+    ctx.fillText(`showing ${S1.length} of ${NN.h1}`, X.h1, h-6);
+    ctx.fillText(`${S2.length} of ${NN.h2}`, X.h2, h-6);
+  }
+  // output topics with live probability bars
+  ctx.textAlign="left"; ctx.font="12px 'Space Grotesk',sans-serif";
+  for(let c=0;c<NN.classes.length;c++){
+    const oy=posOut(c);
+    const p=act?act.p[c]:0;
+    ctx.beginPath(); ctx.arc(X.out,oy,6+(act?p*7:0),0,6.283);
+    ctx.fillStyle=act&&p>0.02?`rgba(79,216,235,${0.25+p*0.75})`:"rgba(138,151,168,0.5)";
+    ctx.fill();
+    ctx.fillStyle="rgba(232,238,245,0.9)";
+    ctx.fillText(NN.classes[c]+(act?` ${Math.round(p*100)}%`:""), X.out+12, oy+4);
+  }
+  if(NN.training){
+    ctx.fillStyle="rgba(79,216,235,0.85)"; ctx.textAlign="center";
+    ctx.fillText("⚡ training…", w/2, 16);
+  }
+}
+let netTimer=null;
+function openNetTab(){
+  renderNet();
+  clearInterval(netTimer);
+  netTimer=setInterval(()=>{
+    if(!document.getElementById("tab-net").classList.contains("active")){ clearInterval(netTimer); netTimer=null; return; }
+    renderNet();
+  }, 600);
+}
+
+/* ---------- persistence ---------- */
+function saveAll(){ store.set("nova_brain",brain); store.set("nova_memory",memory); refreshChips(); }
+function logLine(who,text){ memory.history.push({when:new Date().toISOString().slice(0,16).replace("T"," "),who,text}); memory.history=memory.history.slice(-30); }
+
+/* ---------- UI: general ---------- */
+const $ = id => document.getElementById(id);
+
+/* ---------- 🎯 TRAINING CENTER UI ---------- */
+let trainAgent=null;
+
+function renderTrainAgents(){
+  const list=$("train-agentlist"); list.innerHTML="";
+  for(const e of expertsList()){
+    const d=document.createElement("div");
+    d.className="p-card"+(trainAgent===e.key?" selected":"");
+    d.innerHTML=`<span class="p-face"></span><span><div class="p-name"></div><div class="p-desc"></div></span>`;
+    d.querySelector(".p-face").textContent=e.emoji;
+    d.querySelector(".p-name").textContent=e.name;
+    const owned=agentTopicsOf(e.key);
+    d.querySelector(".p-desc").textContent = owned.length ? owned.join(", ")+" ("+owned.reduce((s,t)=>s+Object.keys(brain[t]||{}).length,0)+" facts)" : "no topics assigned yet";
+    d.addEventListener("click",()=>{ trainAgent=e.key; renderTrainAgents(); renderTrainPanel(); });
+    list.appendChild(d);
+  }
+}
+function renderTrainPanel(){
+  const panel=$("train-panel");
+  if(!trainAgent){ panel.style.display="none"; return; }
+  panel.style.display="flex";
+  const e=getExpert(trainAgent);
+  $("train-heading").textContent="Training: "+e.emoji+" "+e.name;
+  const st=(memory.expertStats||{})[trainAgent];
+  $("train-stats").textContent = e.desc+(st&&st.answered?` · ${st.answered} answers given so far`:"");
+
+  const owned=agentTopicsOf(trainAgent);
+  const tl=$("train-topiclist"); tl.innerHTML="";
+  if(!owned.length){ tl.innerHTML='<p class="note">No topics assigned — teaching below will create one automatically.</p>'; }
+  for(const t of owned){
+    const row=document.createElement("div");
+    row.className="topic-item";
+    row.innerHTML=`<span class="t-name"></span><span class="t-count mono"></span>`;
+    row.querySelector(".t-name").textContent="📂 "+t;
+    row.querySelector(".t-count").textContent=Object.keys(brain[t]||{}).length+" facts";
+    const del=document.createElement("button"); del.className="t-del"; del.textContent="✕";
+    del.setAttribute("aria-label","Unassign "+t);
+    del.addEventListener("click",()=>{ unassignTopic(t); renderTrainPanel(); renderTrainAgents(); });
+    row.appendChild(del);
+    tl.appendChild(row);
+  }
+
+  const sel=$("train-existing"); sel.innerHTML="";
+  const unowned=Object.keys(brain).filter(t=>!ownerOfTopic(t));
+  if(!unowned.length){ const o=document.createElement("option"); o.textContent="(no unassigned topics)"; o.value=""; sel.appendChild(o); }
+  for(const t of unowned){ const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); }
+}
+function trainDestTopic(){
+  const owned=agentTopicsOf(trainAgent);
+  if(owned.length) return owned[0];
+  const auto=trainAgent+"-topic";
+  ensureTopic(auto);
+  assignTopicToAgent(auto, trainAgent);
+  renderTrainPanel(); renderTrainAgents();
+  return auto;
+}
+$("train-assign").addEventListener("click",()=>{
+  const t=$("train-existing").value; if(!t || !trainAgent) return;
+  assignTopicToAgent(t, trainAgent);
+  renderTrainPanel(); renderTrainAgents();
+});
+$("train-createassign").addEventListener("click",()=>{
+  const nt=$("train-newtopic").value.trim().toLowerCase();
+  if(!nt || !trainAgent) return;
+  ensureTopic(nt); assignTopicToAgent(nt, trainAgent);
+  $("train-newtopic").value="";
+  renderTrainPanel(); renderTrainAgents();
+});
+$("tr-add").addEventListener("click",()=>{
+  if(!trainAgent) return;
+  const q=clean($("tr-q").value), a=$("tr-a").value.trim();
+  if(!q||!a){ $("tr-status").textContent="Need both a question and an answer!"; return; }
+  const t=trainDestTopic(); ensureTopic(t);
+  brain[t][q]=a; memory.factsTaught++; addXP(5); saveAll();
+  $("tr-q").value=""; $("tr-a").value="";
+  $("tr-status").textContent=`🧠 Taught ${getExpert(trainAgent).name}! '${t}' now has ${Object.keys(brain[t]).length} facts.`;
+  renderTrainPanel(); renderTrainAgents();
+});
+$("tr-bulkadd").addEventListener("click",()=>{
+  if(!trainAgent) return;
+  const t=trainDestTopic(); ensureTopic(t);
+  let added=0, skipped=0;
+  for(const line of $("tr-bulk").value.split("\n")){
+    const s=line.trim(); if(!s) continue;
+    const i=s.indexOf("|");
+    if(i<1){ skipped++; continue; }
+    const q=clean(s.slice(0,i)), a=s.slice(i+1).trim();
+    if(q&&a){ brain[t][q]=a; added++; } else skipped++;
+  }
+  memory.factsTaught+=added; addXP(added*2); saveAll(); $("tr-bulk").value="";
+  $("tr-status").textContent=`📥 Taught ${getExpert(trainAgent).name} ${added} facts into '${t}'`+(skipped?` (${skipped} skipped)`:"")+".";
+  renderTrainPanel(); renderTrainAgents();
+});
+$("tr-study").addEventListener("click",()=>{
+  if(!trainAgent) return;
+  const subject=$("tr-subject").value.trim();
+  if(!subject){ $("tr-status").textContent="Give me a subject to study!"; return; }
+  if(studying){ $("tr-status").textContent="Already studying — one dump at a time!"; return; }
+  const t=trainDestTopic();
+  const target=parseInt($("tr-size").value,10)||20;
+  const source=$("tr-source").value;
+  $("tr-subject").value="";
+  $("tr-status").textContent="🌐 Starting study session…";
+  $("tr-study").textContent="Studying…";
+  if(typeof fetch!=="function"){
+    $("tr-status").textContent="⚠️ This browser/preview can't reach the internet. Download this file and open it directly in a real browser.";
+    $("tr-study").textContent="Study into this agent";
+    return;
+  }
+  deepStudy(subject, t, $("tr-status"), target, source).then(()=>{ renderTrainPanel(); renderTrainAgents(); renderTeach(); }).finally(()=>{ $("tr-study").textContent="Study into this agent"; });
+});
+
+function refreshChips(){
+  let facts=0; for(const t in brain) facts+=Object.keys(brain[t]).length;
+  $("c-facts").textContent=facts;
+  $("c-words").textContent=corpusText().split(/\s+/).filter(Boolean).length;
+  $("c-session").textContent=memory.sessions;
+  const lv=level();
+  $("c-level").textContent="Lv "+lv+" "+LEVEL_NAMES[lv-1];
+  document.documentElement.style.setProperty("--glow",(10+lv*4)+"px");
+}
+function applyTheme(){
+  const p=P();
+  document.documentElement.style.setProperty("--accent",p.color);
+  $("orb").textContent=p.face;
+}
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    $("tab-"+b.dataset.tab).classList.add("active");
+    if(b.dataset.tab==="teach") renderTeach();
+    if(b.dataset.tab==="topics") renderTopics();
+    if(b.dataset.tab==="persona"){ renderPersona(); renderExperts(); }
+    if(b.dataset.tab==="quiz") renderQuizStats();
+    if(b.dataset.tab==="net") openNetTab();
+    if(b.dataset.tab==="train") renderTrainAgents();
+    if(b.dataset.tab==="memories") renderMemories();
+  });
+});
+
+/* ---------- UI: chat ---------- */
+function bubble(kind,text,tag,hue){
+  const d=document.createElement("div");
+  d.className="bubble "+kind;
+  if(tag){
+    const t=document.createElement("div");
+    t.className="exptag"; t.textContent=tag;
+    if(hue!==undefined) t.style.color=`hsl(${hue} 70% 65%)`;
+    d.appendChild(t);
+  }
+  d.appendChild(document.createTextNode(text));
+  $("chatlog").appendChild(d);
+  $("chatlog").scrollTop=$("chatlog").scrollHeight;
+}
+function botSay(text,{log=true, tag=null, hue, voice}={}){
+  const orb=$("orb"); orb.classList.add("thinking");
+  const wait=Math.min(300+text.length*8, 1200)*(MOODS[mood]?MOODS[mood].delay:1);
+  setTimeout(()=>{
+    orb.classList.remove("thinking");
+    bubble("bot",text,tag,hue);
+    speak(text,voice);
+    if(log){logLine("Bot",text); saveAll();}
+  }, wait);
+}
+/* everything an expert needs to speak as itself */
+function asExpert(e){ return e ? {tag:tagOf(e), hue:e.hue, voice:expertVoice(e.key)} : {}; }
+function bumpStat(e, field){
+  if(!e) return;
+  memory.expertStats=memory.expertStats||{};
+  const s=memory.expertStats[e.key]=memory.expertStats[e.key]||{answered:0,debates:0};
+  s[field]=(s[field]||0)+1; saveAll();
+}
+function setTeachbar(){
+  const bar=$("teachbar");
+  if(pendingTeach){ bar.style.display="block"; bar.textContent=`✏️ "${pendingTeach.q}" — type the answer, or "look it up" 🌐 (or "skip")`; }
+  else bar.style.display="none";
+}
+
+function handleUser(text){
+  bubble("user",text); logLine(memory.name||"You",text);
+
+  if(awaitingName){
+    memory.name=text.trim()||"friend"; awaitingName=false; saveAll();
+    botSay(`Nice to meet you, ${memory.name}! I'll remember you — even if you close me. Ask me anything, or teach me in the 📚 tab.`);
+    return;
+  }
+
+  if(pendingTeach){
+    const c=clean(text);
+    // if you ask a NEW question instead of answering, drop teach mode and just answer it
+    if(/^(what|who|how|why|when|where|which)\b/.test(c) || text.trim().endsWith("?")){
+      pendingTeach=null; setTeachbar();
+    }else{
+    if(c==="skip"){ pendingTeach=null; setTeachbar(); botSay("No worries — maybe next time!"); return; }
+    if(c==="look it up"||c==="search it"||c==="google it"){
+      const q=pendingTeach.q; pendingTeach=null; setTeachbar(); lookUp(q); return;
+    }
+    const topic = scope!=="all" ? scope : (guessTopic(pendingTeach.q)||"general");
+    ensureTopic(topic);
+    brain[topic][clean(pendingTeach.q)]=text.trim();
+    nnLearnOne(pendingTeach.q+" "+text, topic);   // live neural lesson
+    memory.factsTaught++; addXP(5); pendingTeach=null; setTeachbar(); saveAll();
+    setMood("happy");
+    achieve("first_fact","🥇 First fact — Nova's education has begun!");
+    if(memory.factsTaught>=100) achieve("facts100","💯 100 facts taught!");
+    botSay(pick(P().gotit)+` (saved under '${topic}')`,asExpert(expertForTopic(topic)));
+    return;
+    }
+  }
+
+  const cl=clean(text);
+
+  /* 🎓 Teacher: grade an in-chat quiz answer */
+  if(chatQuiz){
+    const answer=chatQuiz.a; chatQuiz=null;
+    const ak=[...new Set(keywords(answer))];
+    let hits=0; for(const w of keywords(text)) if(ak.some(a=>wordsMatch(a,w))) hits++;
+    const correct=hits>=2 || (hits>=1 && ak.length<=3);
+    const s=memory.quizStats; s.asked++;
+    if(correct){ s.correct++; s.streak++; s.best=Math.max(s.best,s.streak); addXP(10); if(s.streak>=3) setMood("proud"); }
+    else s.streak=0;
+    saveAll(); bumpStat(getExpert("teacher"),"answered");
+    botSay((correct?"✅ Correct! (+10 XP)\n\n":"❌ Not quite!\n\n")+"Full answer: "+answer+'\n\nSay "quiz me" for another!',asExpert(getExpert("teacher")));
+    return;
+  }
+  /* 🎓 Teacher: start an in-chat quiz */
+  if(/^(quiz me|test me)/.test(cl)){
+    const know=knowledgeInScope(); const qs=Object.keys(know);
+    if(qs.length<3){ botSay("Teach me at least 3 facts first — then I can quiz you!",asExpert(getExpert("teacher"))); return; }
+    const q=qs[Math.floor(Math.random()*qs.length)];
+    chatQuiz={q, a:know[q]};
+    botSay("🎓 Pop quiz! "+q.charAt(0).toUpperCase()+q.slice(1)+"?",asExpert(getExpert("teacher")));
+    return;
+  }
+  /* 🧮 Math: real calculation */
+  if(/\d\s*[+\-*/%^]\s*\d|^(calculate|math|solve)\b/.test(cl)){
+    const result=mathEval(cl);
+    if(result!==null){
+      bumpStat(getExpert("math"),"answered");
+      botSay("🧮 = "+result,asExpert(getExpert("math")));
+      return;
+    }
+  }
+  /* 💻 Code: CONSTRUCT a real program — checks what Nova has actually
+     LEARNED first (via its neural network's topic guess), falls back
+     to pattern templates only if nothing real matches. */
+  if(/\b(code|script|program|python|javascript|js)\b/.test(cl) && /^(write|make|create|generate|build|code)\b/.test(cl)){
+    bumpStat(getExpert("code"),"answered");
+    const learned=findLearnedCodeSnippet(text);
+    const built=codeBuild(text);
+    const nnLine = learned&&learned.nn ? ` (🧠 neural net: ${learned.nn.conf}% confident this is '${learned.nn.topic}')` : "";
+    if(learned){
+      let msg=`💻 Built from something I actually learned${nnLine}:\n\n${learned.snippet}\n\n(Pulled from my fact: "${learned.question}" — a real snippet I read, not just a fill-in-the-blank template.)`;
+      if(built) msg+=`\n\n🧩 I can also construct a fresh one from a pattern:\n${built.code}`;
+      botSay(msg,asExpert(getExpert("code")));
+    }else if(built){
+      botSay(`💻 Built you ${built.why} in ${built.lang}:\n\n${built.code}\n\n(Constructed from a pattern — try changing my numbers! Teach me real code examples and I'll start pulling from those too.)`,asExpert(getExpert("code")));
+    }else{
+      botSay("💻 I construct code from patterns I know: loops between numbers, even/odd, times tables, math functions, printing, user input, and lists. Try: \"write a python loop that counts 1 to 10\" or \"make a js function that multiplies\". Teach me real examples (or Deep Study from Stack Exchange) and I'll start building from those too!",asExpert(getExpert("code")));
+    }
+    return;
+  }
+
+  /* ✍️ Write: compose from Nova's reading */
+  const wm=cl.match(/^(?:write|compose|make)(?: me)?(?: a| an| some)? (poem|haiku|story|sentence|paragraph|verse|song)(?: about (.+))?/);
+  if(wm){
+    const piece=writePiece(wm[1], wm[2]||"");
+    bumpStat(getExpert("write"),"answered");
+    if(!piece) botSay("I need more reading before I can write! Do a 🌐 Deep Study to feed my vocabulary.",asExpert(getExpert("write")));
+    else botSay("✍️ Here's my "+wm[1]+(wm[2]?" about "+wm[2]:"")+":\n\n"+piece+"\n\n(Composed word-by-word from my reading — original, if a little strange!)",asExpert(getExpert("write")));
+    return;
+  }
+  /* 📖 Summarizer */
+  if(/^(summarize|summarise|tldr|shorten)\b/.test(cl)){
+    const target=text.replace(/^(summarize|summarise|tldr|shorten)[:,]?\s*/i,"");
+    const sum=target.length>80 ? summarizeText(target) : null;
+    bumpStat(getExpert("summarizer"),"answered");
+    if(sum) botSay("📖 The heart of it:\n\n"+sum,asExpert(getExpert("summarizer")));
+    else botSay("Paste a chunk of text after the word summarize (a few sentences at least) and I'll pull out the key parts!",asExpert(getExpert("summarizer")));
+    return;
+  }
+  /* 🔮 Sorter: classify on request */
+  const sm=cl.match(/^(?:what topic is|classify|sort) (.+)/);
+  if(sm){
+    const nn=nnPredict(sm[1]);
+    const t=nn?nn.topic:guessTopic(sm[1]);
+    bumpStat(getExpert("sorter"),"answered");
+    botSay(t ? (nn ? `🔮 My neural network says '${t}' — ${nn.conf}% confident (trained on ${NN.trained} of my own facts).`
+                   : `🔮 That sounds like '${t}' to me.`)
+             : "🔮 Hmm, that doesn't match any topic I know yet.",asExpert(getExpert("sorter")));
+    return;
+  }
+  /* 📊 Analyst: self-report */
+  if(/^(stats|how smart are you|report)\b/.test(cl)){
+    let facts=0; for(const t in brain) facts+=Object.keys(brain[t]).length;
+    const lv=level();
+    bumpStat(getExpert("analyst"),"answered");
+    botSay(`📊 Status report: Lv ${lv} ${LEVEL_NAMES[lv-1]} · ${facts} facts · ${Object.keys(brain).length} topics · ${memory.xp} XP · quiz record ${memory.quizStats.correct}/${memory.quizStats.asked} · session #${memory.sessions}.\n🧠 Neural network: ${NN.ready?`${NN.params.toLocaleString()} parameters, ${NN.acc}% self-test accuracy`:NN.training?"training right now…":"waiting for more facts"}. Verdict: getting smarter.`,asExpert(getExpert("analyst")));
+    return;
+  }
+
+  if(cl==="imagine" || cl.startsWith("imagine ")){
+    const seed=cl.slice(7);
+    const dream=asExpert(getExpert("dream"));
+    const gs=grammarSpeak(seed);            // coherent, clause-built speech
+    const g=gs?null:imagine(seed);          // word-by-word dreaming as fallback
+    if(!gs && !g){ botSay("I need more reading first! Teach me more, or do a 🌐 Deep Study — then I'll have thoughts to compose with.",dream); return; }
+    addXP(1);
+    achieve("dreamer","💭 Dreamer — Nova composed its first original thought!");
+    bumpStat(getExpert("dream"),"answered");
+    botSay(gs ? `✨ ${gs}\n\n(Composed from things I actually know — original sentence, real facts.)`
+              : `✨ ${g.text}\n\n🍼 Dreamed up word-by-word from the ${g.size} words I've read.`,dream);
+    return;
+  }
+
+  /* 🏛️ explicit definition requests come first: "what does X mean" */
+  const meanMatch=cl.match(/(?:what does|define|break ?down|meaning of)\s+([a-z]+)/);
+  if(meanMatch && meanMatch[1].length>2){
+    const wordAsked=meanMatch[1];
+    const direct=findAnswerInContext("what is "+wordAsked);
+    if(direct){
+      bumpStat(routeExpert(wordAsked),"answered");
+      botSay(extractAnswer(text, direct.a),asExpert(routeExpert(wordAsked)));
+      return;
+    }
+    const ety=etymologyAnswer(wordAsked);
+    if(ety){
+      if(!brain.words) brain.words={};
+      brain.words["what is "+ety.word]=ety.meaning.charAt(0).toUpperCase()+ety.meaning.slice(1)+" ("+ety.breakdown+").";
+      memory.factsTaught++; addXP(3); saveAll();
+      achieve("wordsmith","🏛️ Wordsmith — Nova decoded its first word from ancient roots!");
+      botSay(ety.text+'\n\n(Worked out from roots, not memorized — I saved it! If I got it wrong, just teach me the real meaning.)',
+             asExpert(getExpert("words")));
+      return;
+    }
+    // no fact, no roots — fall through so Nova can ask to be taught
+  }
+
+  /* 🧠 THE ROUTER: pick which expert handles this message. The
+     chosen expert searches ITS OWN topics first (sharper answers),
+     then falls back to the whole brain if it comes up empty. */
+  const expert=routeExpert(text);
+  let res=null;
+  const ownTopics = expert.key==="code"
+    ? Object.keys(brain).filter(t=>agentTopicsOf("code").includes(t) || /cod|program|python|javascript|comput|software/.test(t))
+    : agentTopicsOf(expert.key);
+  if(ownTopics.length){
+    const scoped={};
+    for(const t of ownTopics) if(brain[t]) Object.assign(scoped, brain[t]);
+    if(Object.keys(scoped).length) res=findAnswerInContext(text, scoped);
+  }
+  if(!res) res=findAnswerInContext(text);
+  if(res){
+    let reply=extractAnswer(text, res.a);   // 🔍 answer the actual question
+    if(res.alts && res.alts.length){        // 🧩 blend in a related fact
+      let extra=res.alts[0];
+      if(extra.length>160) extra=extra.slice(0,157).trimEnd()+"…";
+      reply+="\n\n➕ Related: "+extra;
+    }
+    bumpStat(expert,"answered");
+    botSay(reply,asExpert(expert));
+    return;
+  }
+
+  /* 🏛️ No stored fact — can the Etymologist crack a word open?
+     Try the word after "what does X mean", else the longest big word. */
+  const bigWord=cl.split(/\s+/).filter(w=>w.length>=8 && !STOP.has(w)).sort((a,b)=>b.length-a.length)[0]||null;
+  if(bigWord){
+    const ety=etymologyAnswer(bigWord);
+    if(ety){
+      if(!brain.words) brain.words={};
+      brain.words["what is "+ety.word]=ety.meaning.charAt(0).toUpperCase()+ety.meaning.slice(1)+" ("+ety.breakdown+").";
+      memory.factsTaught++; addXP(3); saveAll();
+      achieve("wordsmith","🏛️ Wordsmith — Nova decoded its first word from ancient roots!");
+      botSay(ety.text+'\n\n(Worked out from roots, not memorized — I saved it! If I got it wrong, just teach me the real meaning.)',
+             asExpert(getExpert("words")));
+      return;
+    }
+  }
+
+  /* 💬 not a question? Then it's conversation — banter back
+     instead of demanding a lesson. */
+  const isQuestion=/^(what|who|how|why|when|where|which|is|are|do|does|can|will|did)\b/.test(cl) || text.trim().endsWith("?");
+  if(!isQuestion){
+    bumpStat(getExpert("chat"),"answered");
+    botSay(pick(P().chat||P().greet),asExpert(getExpert("chat")));
+    return;
+  }
+
+  // Otherwise the Dreamer thinks out loud from Nova's reading
+  // (in its own voice, never copying how you talk).
+  const gsMuse=grammarSpeak(text);
+  const muse=gsMuse?{text:gsMuse}:imagine(text, true);
+  pendingTeach={q:text}; setTeachbar();
+  if(muse){
+    botSay(`💭 I don't know for sure, but thinking out loud: ${muse.text}\n\nThat's just me guessing from what I've read! Teach me the real answer, or say "look it up" 🌐 (or "skip").`,asExpert(getExpert("dream")));
+    return;
+  }
+
+  botSay(pick(P().unknown)+'\n(Or say "look it up" and I\'ll search the internet! 🌐)',{log:true, ...asExpert(expert)});
+}
+$("imaginebtn").addEventListener("click",()=>{ const v=$("msg").value.trim(); $("msg").value=""; handleUser(v ? "imagine "+v : "imagine"); });
+$("send").addEventListener("click",()=>{ const v=$("msg").value.trim(); if(v){$("msg").value=""; handleUser(v);} });
+$("msg").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("send").click(); } });
+
+/* voice toggle + microphone */
+function renderVoiceBtn(){ const b=$("voicebtn"); b.textContent=memory.voice?"🔊":"🔇"; b.classList.toggle("on",memory.voice); }
+$("voicebtn").addEventListener("click",()=>{
+  memory.voice=!memory.voice; saveAll(); renderVoiceBtn();
+  if(memory.voice) speak("Voice on! Hello!");
+  else if("speechSynthesis" in window) speechSynthesis.cancel();
+});
+if(SR){
+  $("micbtn").style.display="block";
+  recog=new SR(); recog.lang="en-US"; recog.interimResults=false;
+  recog.onresult=e=>{
+    const said=e.results[0][0].transcript;
+    $("micbtn").classList.remove("listening");
+    if(said) handleUser(said);
+  };
+  recog.onend=()=>$("micbtn").classList.remove("listening");
+  recog.onerror=()=>$("micbtn").classList.remove("listening");
+  $("micbtn").addEventListener("click",()=>{
+    if($("micbtn").classList.contains("listening")){ recog.stop(); return; }
+    $("micbtn").classList.add("listening");
+    try{ recog.start(); }catch(e){}
+  });
+}
+
+$("net-probe").addEventListener("input",renderNet);
+$("t-topic").addEventListener("change",updateTeachDestination);
+$("t-newtopic").addEventListener("input",updateTeachDestination);
+$("net-size").value=memory.netSize||"auto";
+$("net-size").addEventListener("change",e=>{
+  memory.netSize=e.target.value; saveAll();
+  NN.sig=""; NN.ready=false;      // force a rebuild at the new size
+  nnScheduleRetrain(); renderNet();
+});
+
+/* memory tab: search + forget wiring */
+$("memsearch").addEventListener("input",e=>memRunSearch(e.target.value));
+$("memforget").addEventListener("click",()=>{
+  if(!memSel || memSel.type!=="fact") return;
+  if(brain[memSel.topic]){ delete brain[memSel.topic][memSel.label]; saveAll(); }
+  const keep={...cam};
+  buildMemoryGraph();
+  for(let i=0;i<120;i++) memPhysicsStep();
+  cam=keep; memSleep=false; memSel=null;
+  memShowDetail();
+});
+
+/* ---------- UI: teach tab ---------- */
+function renderTeach(keepTopic){
+  const sel=$("t-topic");
+  const want=keepTopic || sel.value; // remember what was selected before the rebuild
+  sel.innerHTML="";
+  for(const t in brain){ const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); }
+  if(want && Object.prototype.hasOwnProperty.call(brain,want)) sel.value=want; // restore it — don't silently fall back to the first topic
+  updateTeachDestination();
+}
+function updateTeachDestination(){
+  const el=$("teach-dest"); if(!el) return;
+  const nt=$("t-newtopic").value.trim().toLowerCase();
+  const dest = nt || $("t-topic").value || "general";
+  el.textContent = "→ Teaching into: '"+dest+"'"+(nt?" (new topic)":"");
+}
+function ensureTopic(name){
+  // hasOwnProperty guard: a topic literally named "constructor", "toString",
+  // etc. must not collide with JavaScript's built-in Object properties
+  if(!Object.prototype.hasOwnProperty.call(brain,name) || typeof brain[name]!=="object" || brain[name]===null){
+    brain[name]=Object.create(null);
+  }
+  return brain[name];
+}
+function teachTopic(){
+  const nt=$("t-newtopic").value.trim().toLowerCase();
+  if(nt){ ensureTopic(nt); $("t-newtopic").value=""; renderTeach(nt); return nt; }
+  const t=$("t-topic").value || "general";
+  ensureTopic(t);
+  return t;
+}
+$("t-add").addEventListener("click",()=>{
+  const q=clean($("t-q").value), a=$("t-a").value.trim();
+  if(!q||!a){ $("t-status").textContent="Need both a question and an answer!"; return; }
+  const t=teachTopic(); ensureTopic(t);
+  brain[t][q]=a; memory.factsTaught++; addXP(5); saveAll();
+  achieve("first_fact","🥇 First fact — Nova's education has begun!");
+  if(memory.factsTaught>=10) achieve("facts10","🧠 10 facts taught!");
+  if(memory.factsTaught>=100) achieve("facts100","💯 100 facts taught!");
+  $("t-q").value=""; $("t-a").value="";
+  $("t-status").textContent=`🧠 Learned! '${t}' now has ${Object.keys(brain[t]).length} facts. (+5 XP)`;
+});
+$("w-study").addEventListener("click",()=>{
+  const subject=$("w-subject").value.trim();
+  if(!subject){ $("t-status").textContent="Give me a subject to study!"; return; }
+  if(studying){ $("t-status").textContent="Already studying — one dump at a time!"; return; }
+  const topic=($("w-topic").value.trim().toLowerCase())||subject.toLowerCase();
+  const target=parseInt($("w-size").value,10)||20;
+  const source=$("w-source").value;
+  $("w-subject").value=""; $("w-topic").value="";
+  // instant feedback the moment you tap — no waiting on the network to see SOMETHING happen
+  $("t-status").textContent="🌐 Starting study session…";
+  $("w-study").textContent="Studying…";
+  if(typeof fetch!=="function"){
+    $("t-status").textContent="⚠️ This browser/preview can't reach the internet. Download this file and open it directly in a real browser (Chrome/Safari/etc) for Study and internet look-ups to work.";
+    $("w-study").textContent="Study";
+    return;
+  }
+  deepStudy(subject, topic, $("t-status"), target, source)
+    .then(renderTeach)
+    .finally(()=>{ $("w-study").textContent="Study"; });
+});
+$("t-bulkadd").addEventListener("click",()=>{
+  const t=teachTopic(); ensureTopic(t);
+  let added=0, skipped=0;
+  for(const line of $("t-bulk").value.split("\n")){
+    const s=line.trim(); if(!s) continue;
+    const i=s.indexOf("|");
+    if(i<1){ skipped++; continue; }
+    const q=clean(s.slice(0,i)), a=s.slice(i+1).trim();
+    if(q&&a){ brain[t][q]=a; added++; } else skipped++;
+  }
+  memory.factsTaught+=added; addXP(added*2); saveAll(); $("t-bulk").value="";
+  if(memory.factsTaught>=10) achieve("facts10","🧠 10 facts taught!");
+  if(memory.factsTaught>=100) achieve("facts100","💯 100 facts taught!");
+  $("t-status").textContent=`📥 Added ${added} facts to '${t}'`+(skipped?` (${skipped} bad lines skipped)`:"")+".";
+});
+
+/* ---------- UI: quiz tab ---------- */
+function renderQuizStats(){
+  const s=memory.quizStats;
+  $("q-score").textContent=s.correct+"/"+s.asked;
+  $("q-streak").textContent=s.streak;
+  $("q-best").textContent=s.best;
+}
+function newQuizQuestion(){
+  const know=knowledgeInScope();
+  const qs=Object.keys(know);
+  if(qs.length<3){ $("quiz-q").textContent="Teach me at least 3 facts first (in this scope) — then I can quiz you!"; quizQ=null; return; }
+  quizQ=qs[Math.floor(Math.random()*qs.length)];
+  $("quiz-q").textContent="❓ "+quizQ.charAt(0).toUpperCase()+quizQ.slice(1)+"?";
+  $("quiz-a").value=""; $("quiz-feedback").textContent="";
+}
+function gradeQuiz(){
+  if(!quizQ){ newQuizQuestion(); return; }
+  const user=$("quiz-a").value.trim();
+  if(!user) return;
+  const answer=knowledgeInScope()[quizQ];
+  const ak=[...new Set(keywords(answer))];
+  let hits=0; for(const w of keywords(user)) if(ak.some(a=>wordsMatch(a,w))) hits++;
+  const correct = hits>=2 || (hits>=1 && ak.length<=3);
+  const s=memory.quizStats;
+  s.asked++;
+  if(correct){
+    s.correct++; s.streak++; s.best=Math.max(s.best,s.streak);
+    addXP(10);
+    if(s.streak>=3) setMood("proud");
+    achieve("quiz_first","🎓 First correct quiz answer!");
+    if(s.streak>=5) achieve("streak5","🔥 5 correct in a row!");
+    $("quiz-feedback").textContent="✅ Correct! (+10 XP)\n\nFull answer: "+answer;
+  }else{
+    s.streak=0;
+    $("quiz-feedback").textContent="❌ Not quite!\n\nThe answer I know: "+answer;
+  }
+  saveAll(); renderQuizStats(); quizQ=null;
+}
+$("quiz-next").addEventListener("click",newQuizQuestion);
+$("quiz-submit").addEventListener("click",gradeQuiz);
+$("quiz-a").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); gradeQuiz(); } });
+
+/* ---------- UI: topics tab ---------- */
+function renderTopics(){
+  const list=$("topiclist"); list.innerHTML="";
+  const mk=(name,count)=>{
+    const d=document.createElement("div");
+    d.className="topic-item"+(scope===name?" selected":"");
+    d.innerHTML=`<span class="t-name"></span><span class="t-count mono"></span>`;
+    d.querySelector(".t-name").textContent = name==="all" ? "🌐 All topics" : "📂 "+name;
+    d.querySelector(".t-count").textContent = count;
+    d.addEventListener("click",()=>{ scope=name; memory.lastTopic=name; saveAll(); renderTopics(); });
+    if(name!=="all" && name!=="general"){
+      const del=document.createElement("button"); del.className="t-del"; del.textContent="🗑"; del.setAttribute("aria-label","Delete "+name);
+      del.addEventListener("click",e=>{ e.stopPropagation(); if(confirm(`Delete topic '${name}' and its facts?`)){ delete brain[name]; if(scope===name){scope="all"; memory.lastTopic="all";} saveAll(); renderTopics(); }});
+      d.appendChild(del);
+    }
+    list.appendChild(d);
+  };
+  let total=0; for(const t in brain) total+=Object.keys(brain[t]).length;
+  mk("all", total+" facts");
+  for(const t in brain) mk(t, Object.keys(brain[t]).length+" facts");
+}
+let wipeArmed=null;
+$("wipebtn").addEventListener("click",()=>{
+  const b=$("wipebtn");
+  if(!wipeArmed){
+    b.textContent="⚠️ Tap again to erase EVERYTHING";
+    wipeArmed=setTimeout(()=>{ b.textContent="Wipe Nova's memory"; wipeArmed=null; }, 4000);
+    return;
+  }
+  clearTimeout(wipeArmed); wipeArmed=null;
+  if(store.ok){ try{ localStorage.removeItem("nova_brain"); localStorage.removeItem("nova_memory"); }catch(e){} }
+  location.reload();
+});
+
+$("exportbtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify({brain,memory},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="nova_backup.json"; a.click();
+});
+$("importbtn").addEventListener("click",()=>$("importfile").click());
+$("importfile").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const data=JSON.parse(r.result);
+      if(data.brain) brain=data.brain;
+      if(data.memory) memory=Object.assign(memory, data.memory);
+      scope=memory.lastTopic||"all"; saveAll(); applyTheme(); renderTopics(); renderVoiceBtn();
+      bubble("sys","Backup imported — your AI is restored!");
+    }catch(err){ bubble("sys","That file didn't look like a Nova backup."); } };
+  r.readAsText(f);
+});
+
+/* ---------- UI: personality tab ---------- */
+function renderPersona(){
+  const list=$("personalist"); list.innerHTML="";
+  for(const key in PRESETS){
+    const base=PRESETS[key], edits=(memory.edits||{})[key]||{}, p=Object.assign({},base,edits);
+    const d=document.createElement("div");
+    d.className="p-card"+(memory.personality===key?" selected":"");
+    d.innerHTML=`<span class="p-face"></span><span><div class="p-name"></div><div class="p-desc"></div></span>`;
+    d.querySelector(".p-face").textContent=p.face;
+    d.querySelector(".p-name").textContent=p.name;
+    d.querySelector(".p-desc").textContent=p.desc;
+    d.addEventListener("click",()=>{
+      memory.personality=key; saveAll(); applyTheme(); renderPersona();
+      botSay(pick(P().greet)); document.querySelector('nav button[data-tab="chat"]').click();
+    });
+    list.appendChild(d);
+  }
+  const p=P();
+  $("p-face").value=p.face; $("p-color").value=p.color;
+  $("p-unknown").value=p.unknown.join("\n");
+  $("p-gotit").value=p.gotit.join("\n");
+  $("p-greet").value=p.greet.join("\n");
+}
+function saveEdit(field,value){
+  memory.edits=memory.edits||{}; memory.edits[memory.personality]=memory.edits[memory.personality]||{};
+  memory.edits[memory.personality][field]=value; saveAll(); applyTheme();
+  achieve("stylist","🎭 Stylist — you customized a personality!");
+}
+$("p-face").addEventListener("input",e=>saveEdit("face",e.target.value||"🙂"));
+$("p-color").addEventListener("input",e=>saveEdit("color",e.target.value));
+const lines = v => v.split("\n").map(s=>s.trim()).filter(Boolean);
+$("p-unknown").addEventListener("change",e=>{const l=lines(e.target.value); if(l.length) saveEdit("unknown",l);});
+$("p-gotit").addEventListener("change",e=>{const l=lines(e.target.value); if(l.length) saveEdit("gotit",l);});
+$("p-greet").addEventListener("change",e=>{const l=lines(e.target.value); if(l.length) saveEdit("greet",l);});
+$("p-reset").addEventListener("click",()=>{
+  if(memory.edits) delete memory.edits[memory.personality];
+  saveAll(); applyTheme(); renderPersona();
+});
+
+/* ---------- startup ---------- */
+memory.sessions++; saveAll(); applyTheme(); renderTeach(); setTeachbar(); renderVoiceBtn();
+setInterval(curiosityTick, 90000); // 🐣 Nova gets curious now and then
+setTimeout(nnScheduleRetrain, 1500); // 🧠 wake the neural network
+bubble("sys","🗣️ New: tap 🔊 to hear Nova speak, 🎤 to talk to it — and when Nova isn't sure, it now thinks out loud 💭 in its own voice, built from what it reads.");
+if(!store.ok) bubble("sys","Heads up: this browser is blocking saved data, so I'll forget when closed. Use Export in 📂 Topics to back me up!");
+if(!memory.name){
+  awaitingName=true;
+  botSay("Hello! I'm Nova, your learning AI. 🌱 What's your name?",{log:false});
+}else{
+  botSay(pick(P().greet),{log:false});
+}
+</script>
+</body>
+</html>

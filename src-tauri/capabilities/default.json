@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for Nova's single main window. Nova never calls a native Tauri API — it only needs its window to open and load the local frontend — so this stays intentionally minimal.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

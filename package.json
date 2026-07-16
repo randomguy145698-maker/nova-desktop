@@ -1,0 +1,14 @@
+{
+  "name": "nova-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nova — a self-contained learning AI, packaged as a desktop app with Tauri",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

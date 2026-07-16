@@ -1,0 +1,74 @@
+# Cuts a real, signed release whenever you push a version tag (e.g. v1.0.1).
+#
+# This is different from build-windows.yml (which just produces a test
+# installer on every push to main). This workflow does the extra steps
+# that actually POWER the auto-updater:
+#   - signs the installer with your private update-signing key
+#   - publishes a GitHub Release with the installer attached
+#   - generates and uploads `latest.json` — the file Nova's updater checks
+#     on every launch to see if a newer version exists
+#
+# How to cut a new release:
+#   1. Bump "version" in src-tauri/tauri.conf.json AND package.json (they
+#      should always match).
+#   2. Commit that change.
+#   3. Tag it and push the tag:  git tag v1.0.1 && git push origin v1.0.1
+#   4. This workflow runs automatically, builds Nova, and publishes a
+#      GitHub Release with the installer + latest.json attached.
+#   5. Anyone running an older Nova will be offered this update the next
+#      time they open the app.
+#
+# One-time setup required before this works (see README.md "Shipping
+# updates" section for the full walkthrough):
+#   - Generate a signing keypair with the Tauri CLI.
+#   - Paste the PUBLIC key into src-tauri/tauri.conf.json (plugins.updater.pubkey).
+#   - Add the PRIVATE key as a GitHub secret named TAURI_SIGNING_PRIVATE_KEY
+#     (and TAURI_SIGNING_PRIVATE_KEY_PASSWORD if you set a password on it).
+#   - Replace the placeholder GitHub username/repo in the updater
+#     "endpoints" URL in tauri.conf.json with your real repository.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # needed so the action can create a GitHub Release
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install npm dependencies (the Tauri CLI)
+        run: npm install
+
+      # The official Tauri GitHub Action: builds the app, signs the
+      # installer using the secrets below, creates a GitHub Release, and
+      # generates latest.json automatically — the one file the updater
+      # plugin needs to find and verify new versions.
+      - name: Build, sign, and publish the release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Nova ${{ github.ref_name }}"
+          releaseBody: "Auto-published release. See commit history for what changed."
+          releaseDraft: true
+          prerelease: false

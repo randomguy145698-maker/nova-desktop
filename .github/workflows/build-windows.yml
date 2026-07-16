@@ -1,0 +1,52 @@
+# Builds Nova into a Windows installer automatically.
+#
+# Why this exists: producing a real .exe/.msi requires the Rust toolchain
+# plus Windows-specific bundler tools (NSIS/WiX). Rather than requiring
+# Carter to install all of that locally, this workflow runs the exact
+# same build on a real Windows machine hosted by GitHub, and hands back
+# the finished installer as a downloadable artifact.
+#
+# How to use it:
+#   1. Push this repo to GitHub.
+#   2. Go to the "Actions" tab and run this workflow (or just push to main —
+#      it runs automatically).
+#   3. When it finishes, open the run and download the "nova-windows-installer"
+#      artifact — that's your .exe/.msi, ready to hand to anyone on Windows.
+
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install npm dependencies (the Tauri CLI)
+        run: npm install
+
+      - name: Build the Windows installer
+        run: npm run build
+
+      # Tauri writes finished installers under src-tauri/target/release/bundle/
+      - name: Upload the installer as a downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-windows-installer
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi

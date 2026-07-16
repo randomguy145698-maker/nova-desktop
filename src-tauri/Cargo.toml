@@ -1,0 +1,40 @@
+[package]
+name = "nova-desktop"
+version = "1.0.0"
+description = "Nova — a self-contained learning AI, packaged as a desktop app"
+authors = ["Carter"]
+edition = "2021"
+
+# Tauri needs to know where the Rust entry point is; nothing unusual here.
+[[bin]]
+name = "nova-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+# tauri-build wires up the icon/bundle metadata declared in tauri.conf.json
+# at compile time. No manual codegen needed for a static-HTML app like Nova.
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# The core Tauri runtime. No extra features (no shell, no fs, no sql plugin)
+# are enabled beyond what's needed below, because Nova's app logic still
+# doesn't call any native APIs — only the update system does.
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# --- Auto-update stack -------------------------------------------------
+# Both plugins below are native/Rust-side. They let the app check for and
+# install new versions automatically, prompting via native dialogs — none
+# of it requires touching Nova's frontend JavaScript. Restarting after an
+# install is done with plain std::process instead of a third plugin (see
+# main.rs) to keep this to the two APIs actually needed.
+tauri-plugin-updater = "2"
+tauri-plugin-dialog = "2"    # shows the native "Update available?" prompt
+
+[profile.release]
+# Smaller, faster release binaries — standard tuning for shipped desktop apps.
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
